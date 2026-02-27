@@ -45,8 +45,15 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       console.error('Firecrawl error:', data);
-      return new Response(JSON.stringify({ success: false, error: data.error || 'Falha no scraping' }), {
-        status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      // Retorna 200 com scraped=false para o frontend exibir formulário manual
+      return new Response(JSON.stringify({
+        success: true,
+        scraped: false,
+        likes: 0, comments: 0, shares: 0, saves: 0,
+        title: null, thumbnail_url: null,
+        scrape_error: data.error || `Status ${response.status}`,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
