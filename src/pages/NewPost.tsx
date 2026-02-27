@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase, detectPlatform, calcScore, EngagementWeights } from "@/lib/supabase";
-import { Member } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
+import { detectPlatform, calcScore, EngagementWeights, Member } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

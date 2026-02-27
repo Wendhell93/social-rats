@@ -1,6 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
-export { supabase };
-
 export type Member = {
   id: string;
   name: string;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
-import { Member, Post } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
+import { Member, Post } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
