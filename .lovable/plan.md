@@ -1,54 +1,35 @@
 
-## Sistema de Ranking de Engajamento em Redes Sociais
+## Contexto do problema
 
-### Visão geral
-App para cadastrar conteúdo de Instagram e TikTok de membros da equipe, medir engajamento automaticamente pelo link e gerar ranking com pontuação configurável.
+O scraping automático de Instagram e TikTok não funciona (Firecrawl bloqueia essas plataformas com 403). Por isso, **o rastreamento de dados precisa ser 100% manual**. O fluxo atual já suporta entrada manual, mas tem algumas fricções que tornam o processo confuso ou trabalhoso:
 
----
+1. O botão "Buscar" não deixa claro que vai falhar para Instagram/TikTok — o usuário fica tentando
+2. Não há como **editar métricas de um post já salvo** (ex: atualizar curtidas depois que o post cresceu)
+3. Não há campo de **data do post** no formulário de cadastro — sem isso, os filtros de período do ranking ficam inúteis
+4. A página de posts não mostra a data de publicação
 
-### 1. Estrutura do app (páginas)
-- **Dashboard** — visão geral com cards de resumo e ranking rápido
-- **Conteúdos** — lista de todos os posts cadastrados com filtros
-- **Cadastrar Conteúdo** — formulário com campo de link (Instagram/TikTok)
-- **Membros** — cadastro e listagem da equipe interna
-- **Ranking** — tabela de posições com filtro por período
-- **Configurações** — pesos de pontuação por tipo de engajamento
+## Plano de melhorias para o rastreamento manual
 
----
+### 1. Remover a tentativa de scraping — formulário direto
+Em vez de mostrar o botão "Buscar" que sempre vai falhar para Instagram/TikTok, mostrar diretamente o formulário de métricas assim que a URL for detectada como válida.
 
-### 2. Cadastro de conteúdo
-- Campo para colar o link do post (Instagram ou TikTok)
-- Sistema detecta a rede social pelo formato da URL
-- Ao confirmar, busca automaticamente via Firecrawl (scraping público) os metadados do post: curtidas, comentários, compartilhamentos, salvamentos (quando disponíveis publicamente)
-- Associa o post a um membro da equipe
-- Exibe prévia do post com os dados encontrados antes de salvar
+- Remover o botão "Buscar" e a lógica de scraping do `NewPost.tsx`
+- Mostrar os campos de métricas imediatamente após colar uma URL válida
+- Manter a detecção de plataforma (Instagram/TikTok)
 
----
+### 2. Adicionar campo de data do post
+- Adicionar campo "Data do post" no formulário de cadastro (`NewPost.tsx`)
+- Salvar no campo `posted_at` já existente no banco
+- Mostrar a data na listagem de posts (`Posts.tsx`)
 
-### 3. Métricas e pontuação
-- Tipos de engajamento rastreados: curtidas, comentários, compartilhamentos, salvamentos
-- Fórmula: `score = (curtidas × peso_curtida) + (comentários × peso_comentário) + ...`
-- Pesos configuráveis na página de Configurações (ex: compartilhamento = 5pts, comentário = 3pts, curtida = 1pt, salvamento = 2pts)
-- Cada post exibe seu score individual
+### 3. Adicionar edição de métricas de posts existentes
+- Adicionar botão de edição na listagem de posts (`Posts.tsx`)
+- Abrir dialog/inline com campos editáveis de curtidas, comentários, compartilhamentos e salvamentos
+- Recalcular o score ao salvar
 
----
+## Arquivos a editar
 
-### 4. Ranking
-- Tabela com posição, avatar, nome do membro, total de posts, score total e variação
-- Filtros: período (últimos 7 dias, 30 dias, mês específico, acumulado)
-- Destaque visual para Top 3 (ouro, prata, bronze)
-- Gráfico de barras comparando os membros
+- `src/pages/NewPost.tsx` — remover scraping, simplificar para formulário direto + campo de data
+- `src/pages/Posts.tsx` — adicionar data na listagem + botão/dialog de edição de métricas
 
----
-
-### 5. Dashboard
-- Cards: total de posts cadastrados, membros ativos, post de maior engajamento
-- Pódio visual com os 3 primeiros do ranking
-- Tabela dos posts mais recentes
-
----
-
-### Backend (Supabase)
-- Tabelas: `members`, `posts`, `engagement_weights`
-- Os dados de engajamento (curtidas, etc.) são inseridos no cadastro via scraping ou manualmente como fallback
-- Sem autenticação (acesso livre)
+Nenhuma alteração de banco necessária — o campo `posted_at` já existe na tabela `posts`.
