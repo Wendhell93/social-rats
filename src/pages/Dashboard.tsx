@@ -1,163 +1,161 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Post, Member, EngagementWeights } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { LayoutDashboard, Users, FileText, Trophy, TrendingUp, Heart, MessageCircle, Share2, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PlatformBadge } from "@/components/PlatformBadge";
-import { Trophy, FileText, Users, Heart, Plus, TrendingUp } from "lucide-react";
 
-interface RankingEntry {
-  member: Member;
+type Stats = {
+  creators: number;
+  posts: number;
   totalScore: number;
-  totalPosts: number;
-}
+  totalLikes: number;
+  totalComments: number;
+  totalShares: number;
+  totalSaves: number;
+};
+
+type TopCreator = { id: string; name: string; role: string | null; score: number; post_count: number };
 
 export default function Dashboard() {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [weights, setWeights] = useState<EngagementWeights | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [topCreators, setTopCreators] = useState<TopCreator[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const [{ data: postsData }, { data: membersData }, { data: weightsData }] = await Promise.all([
-        supabase.from("posts").select("*, member:members(*)").order("created_at", { ascending: false }).limit(5),
-        supabase.from("members").select("*"),
-        supabase.from("engagement_weights").select("*").limit(1).single(),
+      const [{ data: creators }, { data: posts }, { data: postCreators }] = await Promise.all([
+        supabase.from("members").select("id"),
+        supabase.from("posts").select("score, likes, comments, shares, saves"),
+        supabase.from("post_creators").select("creator_id, post:posts(score)"),
       ]);
-      if (postsData) setPosts(postsData as Post[]);
-      if (membersData) setMembers(membersData);
-      if (weightsData) setWeights(weightsData);
+
+      if (posts) {
+        const totalScore = posts.reduce((a, p) => a + (p.score || 0), 0);
+        const totalLikes = posts.reduce((a, p) => a + (p.likes || 0), 0);
+        const totalComments = posts.reduce((a, p) => a + (p.comments || 0), 0);
+        const totalShares = posts.reduce((a, p) => a + (p.shares || 0), 0);
+        const totalSaves = posts.reduce((a, p) => a + (p.saves || 0), 0);
+        setStats({ creators: creators?.length || 0, posts: posts.length, totalScore, totalLikes, totalComments, totalShares, totalSaves });
+      }
+
+      if (postCreators) {
+        const map: Record<string, number> = {};
+        const countMap: Record<string, number> = {};
+        postCreators.forEach((pc: any) => {
+          map[pc.creator_id] = (map[pc.creator_id] || 0) + (pc.post?.score || 0);
+          countMap[pc.creator_id] = (countMap[pc.creator_id] || 0) + 1;
+        });
+        const { data: creatorsData } = await supabase.from("members").select("id, name, role");
+        if (creatorsData) {
+          const ranked = creatorsData
+            .map(c => ({ ...c, score: map[c.id] || 0, post_count: countMap[c.id] || 0 }))
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 5);
+          setTopCreators(ranked);
+        }
+      }
       setLoading(false);
     }
     load();
   }, []);
 
-  const ranking: RankingEntry[] = members.map((m) => {
-    const memberPosts = posts.filter((p) => p.member_id === m.id);
-    return {
-      member: m,
-      totalScore: memberPosts.reduce((acc, p) => acc + p.score, 0),
-      totalPosts: memberPosts.length,
-    };
-  }).sort((a, b) => b.totalScore - a.totalScore);
+  const statCards = stats ? [
+    { label: "Criadores", value: stats.creators, icon: Users, color: "text-primary", bg: "bg-primary/10" },
+    { label: "Posts Cadastrados", value: stats.posts, icon: FileText, color: "text-secondary", bg: "bg-secondary/10" },
+    { label: "Score Total", value: stats.totalScore.toLocaleString(), icon: Trophy, color: "text-amber-400", bg: "bg-amber-400/10" },
+  ] : [];
 
-  const topPost = [...posts].sort((a, b) => b.score - a.score)[0];
-  const medalColors = ["rank-gold", "rank-silver", "rank-bronze"];
-  const medalBg = ["bg-rank-gold", "bg-rank-silver", "bg-rank-bronze"];
-  const medals = ["🥇", "🥈", "🥉"];
+  const engagementCards = stats ? [
+    { label: "Curtidas", value: stats.totalLikes, icon: Heart },
+    { label: "Comentários", value: stats.totalComments, icon: MessageCircle },
+    { label: "Compartilhamentos", value: stats.totalShares, icon: Share2 },
+    { label: "Salvamentos", value: stats.totalSaves, icon: Bookmark },
+  ] : [];
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
+    <div className="p-8 animate-fade-in">
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-1">
+          <LayoutDashboard className="w-5 h-5 text-primary" />
           <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground text-sm mt-1">Visão geral do engajamento da equipe</p>
         </div>
-        <Button asChild>
-          <Link to="/posts/new"><Plus className="w-4 h-4 mr-2" /> Cadastrar Post</Link>
-        </Button>
+        <p className="text-muted-foreground text-sm">Visão geral do desempenho de conteúdo</p>
       </div>
 
-      {/* Cards de resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total de Posts</CardTitle>
-            <FileText className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{loading ? "—" : posts.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Membros Ativos</CardTitle>
-            <Users className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{loading ? "—" : members.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Maior Engajamento</CardTitle>
-            <TrendingUp className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{loading ? "—" : topPost ? topPost.score.toFixed(0) : "0"}</p>
-            {topPost && <p className="text-xs text-muted-foreground mt-1 truncate">{topPost.title || topPost.url}</p>}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pódio Top 3 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Trophy className="w-4 h-4 text-primary" /> Top 3 do Ranking
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <p className="text-sm text-muted-foreground">Carregando...</p>
-            ) : ranking.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum membro cadastrado ainda.</p>
-            ) : (
-              <div className="space-y-3">
-                {ranking.slice(0, 3).map((entry, i) => (
-                  <div key={entry.member.id} className={`flex items-center gap-3 p-3 rounded-lg border ${medalBg[i]}`}>
-                    <span className="text-xl">{medals[i]}</span>
-                    <Avatar className="w-8 h-8">
-                      <AvatarFallback className="text-xs font-bold">{entry.member.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">{entry.member.name}</p>
-                      <p className="text-xs text-muted-foreground">{entry.totalPosts} posts</p>
-                    </div>
-                    <p className={`font-bold text-sm ${medalColors[i]}`}>{entry.totalScore.toFixed(0)} pts</p>
+      {loading ? (
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          {[1,2,3].map(i => <div key={i} className="h-28 rounded-xl bg-muted animate-pulse" />)}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            {statCards.map(({ label, value, icon: Icon, color, bg }) => (
+              <div key={label} className="bg-card border border-border rounded-xl p-5 card-glow">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm text-muted-foreground">{label}</p>
+                  <div className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center`}>
+                    <Icon className={`w-4 h-4 ${color}`} />
                   </div>
-                ))}
+                </div>
+                <p className="text-3xl font-bold text-foreground">{value}</p>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            ))}
+          </div>
 
-        {/* Posts recentes */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Heart className="w-4 h-4 text-primary" /> Posts Recentes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <p className="text-sm text-muted-foreground">Carregando...</p>
-            ) : posts.length === 0 ? (
-              <div className="text-center py-4">
-                <p className="text-sm text-muted-foreground mb-2">Nenhum post cadastrado.</p>
-                <Button size="sm" asChild><Link to="/posts/new">Cadastrar primeiro post</Link></Button>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+            {engagementCards.map(({ label, value, icon: Icon }) => (
+              <div key={label} className="bg-card border border-border rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">{label}</p>
+                </div>
+                <p className="text-xl font-bold">{value.toLocaleString()}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-card border border-border rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                <h2 className="font-semibold">Top 5 Criadores</h2>
+              </div>
+              <Link to="/ranking" className="text-xs text-primary hover:underline">Ver ranking completo →</Link>
+            </div>
+            {topCreators.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground mb-3">Nenhum dado ainda.</p>
+                <Button asChild size="sm" className="gradient-primary text-white border-0">
+                  <Link to="/posts/new">Cadastrar primeiro post</Link>
+                </Button>
               </div>
             ) : (
               <div className="space-y-3">
-                {posts.slice(0, 5).map((post) => (
-                  <div key={post.id} className="flex items-center gap-3">
-                    <PlatformBadge platform={post.platform} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm truncate">{post.title || post.url}</p>
-                      <p className="text-xs text-muted-foreground">{(post.member as any)?.name || "—"}</p>
+                {topCreators.map((creator, i) => (
+                  <Link key={creator.id} to={`/creators/${creator.id}`} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                      i === 0 ? "bg-amber-400/20 text-amber-400" :
+                      i === 1 ? "bg-slate-400/20 text-slate-400" :
+                      i === 2 ? "bg-orange-400/20 text-orange-400" :
+                      "bg-muted text-muted-foreground"
+                    }`}>
+                      {i + 1}
                     </div>
-                    <span className="text-sm font-semibold text-primary">{post.score.toFixed(0)}</span>
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium group-hover:text-primary transition-colors truncate">{creator.name}</p>
+                      {creator.role && <p className="text-xs text-muted-foreground truncate">{creator.role}</p>}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-primary">{creator.score.toFixed(0)}</p>
+                      <p className="text-xs text-muted-foreground">{creator.post_count} posts</p>
+                    </div>
+                  </Link>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
