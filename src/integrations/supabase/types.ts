@@ -65,13 +65,46 @@ export type Database = {
         }
         Relationships: []
       }
+      post_creators: {
+        Row: {
+          creator_id: string
+          id: string
+          post_id: string
+        }
+        Insert: {
+          creator_id: string
+          id?: string
+          post_id: string
+        }
+        Update: {
+          creator_id?: string
+          id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_creators_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_creators_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           comments: number
           created_at: string
           id: string
           likes: number
-          member_id: string
+          member_id: string | null
           platform: string
           posted_at: string | null
           saves: number
@@ -86,7 +119,7 @@ export type Database = {
           created_at?: string
           id?: string
           likes?: number
-          member_id: string
+          member_id?: string | null
           platform: string
           posted_at?: string | null
           saves?: number
@@ -101,7 +134,7 @@ export type Database = {
           created_at?: string
           id?: string
           likes?: number
-          member_id?: string
+          member_id?: string | null
           platform?: string
           posted_at?: string | null
           saves?: number
