@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trophy } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { subDays, startOfMonth, isAfter, parseISO } from "date-fns";
 
 type Period = "7d" | "30d" | "month" | "all";
@@ -19,7 +18,6 @@ interface RankingEntry {
 const medalBg = ["bg-rank-gold", "bg-rank-silver", "bg-rank-bronze"];
 const medalColors = ["rank-gold", "rank-silver", "rank-bronze"];
 const medals = ["🥇", "🥈", "🥉"];
-const barColors = ["hsl(43,96%,56%)", "hsl(220,10%,65%)", "hsl(25,80%,55%)", "hsl(252,80%,57%)", "hsl(329,80%,55%)", "hsl(180,100%,42%)"];
 
 export default function Ranking() {
   const [members, setMembers] = useState<Member[]>([]);
@@ -57,8 +55,6 @@ export default function Ranking() {
     })
     .sort((a, b) => b.totalScore - a.totalScore);
 
-  const chartData = ranking.map((r) => ({ name: r.member.name.split(" ")[0], score: Math.round(r.totalScore) }));
-
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
@@ -85,27 +81,6 @@ export default function Ranking() {
         <p className="text-muted-foreground text-center py-16">Nenhum dado disponível para este período.</p>
       ) : (
         <div className="space-y-6">
-          {/* Gráfico */}
-          {chartData.length > 0 && (
-            <Card>
-              <CardHeader><CardTitle className="text-base">Comparativo de Pontuação</CardTitle></CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip formatter={(v: number) => [`${v} pts`, "Score"]} />
-                    <Bar dataKey="score" radius={[6, 6, 0, 0]}>
-                      {chartData.map((_, i) => (
-                        <Cell key={i} fill={barColors[i % barColors.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Tabela */}
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Trophy className="w-4 h-4 text-primary" /> Classificação</CardTitle></CardHeader>
