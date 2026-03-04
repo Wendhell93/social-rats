@@ -3,13 +3,28 @@ import { LayoutDashboard, Users, FileText, Trophy, Settings } from "lucide-react
 import { cn } from "@/lib/utils";
 
 const RatIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-white">
-    <ellipse cx="9" cy="14" rx="6" ry="5" />
-    <path d="M15 12c2-1 5-1 6 2" />
-    <path d="M3 10c0-3 2-6 5-6 1.5 0 3 1 3 3" />
-    <circle cx="7" cy="13" r="0.5" fill="currentColor" />
-    <path d="M6 19c0 1-1 2-2 2" />
-    <path d="M12 19c0 1 1 2 2 2" />
+  <svg viewBox="0 0 64 64" className="w-5 h-5" fill="currentColor" style={{ color: "white" }}>
+    {/* body */}
+    <ellipse cx="26" cy="40" rx="18" ry="13" />
+    {/* head */}
+    <circle cx="44" cy="30" r="10" />
+    {/* ear */}
+    <circle cx="40" cy="20" r="5" opacity="0.7" />
+    <circle cx="40" cy="20" r="2.5" opacity="0.4" style={{ fill: "#ffaacc" }} />
+    {/* eye */}
+    <circle cx="48" cy="27" r="1.8" fill="black" />
+    <circle cx="48.6" cy="26.4" r="0.6" fill="white" />
+    {/* nose */}
+    <ellipse cx="54" cy="30" rx="1.5" ry="1" fill="#ffaacc" />
+    {/* whiskers */}
+    <line x1="54" y1="29" x2="63" y2="26" stroke="white" strokeWidth="1" />
+    <line x1="54" y1="30" x2="63" y2="30" stroke="white" strokeWidth="1" />
+    <line x1="54" y1="31" x2="63" y2="34" stroke="white" strokeWidth="1" />
+    {/* tail */}
+    <path d="M8 45 Q2 50 4 58 Q6 62 10 60" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+    {/* legs */}
+    <ellipse cx="18" cy="52" rx="5" ry="2.5" />
+    <ellipse cx="32" cy="53" rx="5" ry="2.5" />
   </svg>
 );
 
