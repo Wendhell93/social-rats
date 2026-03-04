@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Post, Creator, EngagementWeights, calcScore } from "@/lib/types";
+import { Post, Creator } from "@/lib/types";
 import { PlatformBadge } from "@/components/PlatformBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Plus, Search, Heart, MessageCircle, Share2, Bookmark, ExternalLink, Trash2, Pencil, CalendarDays, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -14,7 +13,6 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 type PostWithCreators = Post & { post_creators: { creator: Creator }[] };
 
@@ -22,19 +20,15 @@ export default function Posts() {
   const [posts, setPosts] = useState<PostWithCreators[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [weights, setWeights] = useState<EngagementWeights | null>(null);
-  const [editPost, setEditPost] = useState<PostWithCreators | null>(null);
-  const [editMetrics, setEditMetrics] = useState({ likes: 0, comments: 0, shares: 0, saves: 0 });
-  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   async function load() {
-    const [{ data }, { data: w }] = await Promise.all([
-      supabase.from("posts").select("*, post_creators(creator:members(*))").order("created_at", { ascending: false }),
-      supabase.from("engagement_weights").select("*").limit(1).single(),
-    ]);
+    const { data } = await supabase
+      .from("posts")
+      .select("*, post_creators(creator:members(*))")
+      .order("created_at", { ascending: false });
     if (data) setPosts(data as PostWithCreators[]);
-    if (w) setWeights(w);
     setLoading(false);
   }
 
@@ -46,26 +40,6 @@ export default function Posts() {
     load();
   }
 
-  function openEdit(post: PostWithCreators) {
-    setEditPost(post);
-    setEditMetrics({ likes: post.likes, comments: post.comments, shares: post.shares, saves: post.saves });
-  }
-
-  async function saveEdit() {
-    if (!editPost) return;
-    setSaving(true);
-    const score = weights ? calcScore(editMetrics, weights) : editPost.score;
-    const { error } = await supabase.from("posts").update({ ...editMetrics, score }).eq("id", editPost.id);
-    if (error) {
-      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Métricas atualizadas!" });
-      setEditPost(null);
-      load();
-    }
-    setSaving(false);
-  }
-
   const filtered = posts.filter(p => {
     const creatorNames = p.post_creators?.map(pc => pc.creator?.name || "").join(" ") || "";
     return (
@@ -73,8 +47,6 @@ export default function Posts() {
       creatorNames.toLowerCase().includes(search.toLowerCase())
     );
   });
-
-  const editScore = weights && editPost ? calcScore(editMetrics, weights) : 0;
 
   return (
     <div className="p-8 animate-fade-in">
@@ -141,7 +113,7 @@ export default function Posts() {
                     <p className="text-xs text-muted-foreground">pontos</p>
                   </div>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-primary" onClick={() => openEdit(post)}>
+                    <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-primary" onClick={() => navigate(`/posts/${post.id}/edit`)}>
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
                     <AlertDialog>
@@ -166,42 +138,6 @@ export default function Posts() {
           ))}
         </div>
       )}
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editPost} onOpenChange={open => !open && setEditPost(null)}>
-        <DialogContent className="bg-card border-border">
-          <DialogHeader>
-            <DialogTitle>Editar Métricas</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-2">
-            {[
-              { key: "likes", label: "Curtidas", icon: Heart },
-              { key: "comments", label: "Comentários", icon: MessageCircle },
-              { key: "shares", label: "Compartilhamentos", icon: Share2 },
-              { key: "saves", label: "Salvamentos", icon: Bookmark },
-            ].map(({ key, label, icon: Icon }) => (
-              <div key={key}>
-                <Label className="flex items-center gap-1.5 mb-1.5 text-sm">
-                  <Icon className="w-3.5 h-3.5" /> {label}
-                </Label>
-                <Input
-                  type="number" min={0} className="bg-input border-border"
-                  value={editMetrics[key as keyof typeof editMetrics]}
-                  onChange={e => setEditMetrics(m => ({ ...m, [key]: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-            ))}
-          </div>
-          <div className="flex items-center justify-between pt-2 border-t border-border">
-            <span className="text-sm text-muted-foreground">Novo score:</span>
-            <span className="text-xl font-bold gradient-text">{editScore.toFixed(0)} pts</span>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" className="border-border" onClick={() => setEditPost(null)}>Cancelar</Button>
-            <Button onClick={saveEdit} disabled={saving} className="gradient-primary text-white border-0">Salvar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
