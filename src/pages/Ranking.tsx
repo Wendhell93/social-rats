@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Member, Post } from "@/lib/types";
+import { Member } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,6 +8,11 @@ import { Trophy } from "lucide-react";
 import { subDays, startOfMonth, isAfter, parseISO } from "date-fns";
 
 type Period = "7d" | "30d" | "month" | "all";
+
+interface PostCreatorRow {
+  creator_id: string;
+  post: { id: string; score: number; created_at: string } | null;
+}
 
 interface RankingEntry {
   member: Member;
@@ -21,37 +26,43 @@ const medals = ["🥇", "🥈", "🥉"];
 
 export default function Ranking() {
   const [members, setMembers] = useState<Member[]>([]);
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [postCreators, setPostCreators] = useState<PostCreatorRow[]>([]);
   const [period, setPeriod] = useState<Period>("all");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const [{ data: m }, { data: p }] = await Promise.all([
+      const [{ data: m }, { data: pc }] = await Promise.all([
         supabase.from("members").select("*"),
-        supabase.from("posts").select("*"),
+        supabase.from("post_creators").select("creator_id, post:posts(id, score, created_at)"),
       ]);
       if (m) setMembers(m);
-      if (p) setPosts(p as Post[]);
+      if (pc) setPostCreators(pc as PostCreatorRow[]);
       setLoading(false);
     }
     load();
   }, []);
 
-  function filterPosts(posts: Post[]): Post[] {
+  function filterPostCreators(rows: PostCreatorRow[]): PostCreatorRow[] {
     const now = new Date();
-    if (period === "7d") return posts.filter((p) => isAfter(parseISO(p.created_at), subDays(now, 7)));
-    if (period === "30d") return posts.filter((p) => isAfter(parseISO(p.created_at), subDays(now, 30)));
-    if (period === "month") return posts.filter((p) => isAfter(parseISO(p.created_at), startOfMonth(now)));
-    return posts;
+    return rows.filter((pc) => {
+      if (!pc.post) return false;
+      if (period === "7d") return isAfter(parseISO(pc.post.created_at), subDays(now, 7));
+      if (period === "30d") return isAfter(parseISO(pc.post.created_at), subDays(now, 30));
+      if (period === "month") return isAfter(parseISO(pc.post.created_at), startOfMonth(now));
+      return true;
+    });
   }
 
-  const filteredPosts = filterPosts(posts);
+  const filtered = filterPostCreators(postCreators);
 
   const ranking: RankingEntry[] = members
     .map((m) => {
-      const mp = filteredPosts.filter((p) => p.member_id === m.id);
-      return { member: m, totalScore: mp.reduce((a, p) => a + p.score, 0), totalPosts: mp.length };
+      const mp = filtered.filter((pc) => pc.creator_id === m.id);
+      // deduplicate by post id to count unique posts
+      const uniquePostIds = new Set(mp.map((pc) => pc.post!.id));
+      const totalScore = mp.reduce((a, pc) => a + pc.post!.score, 0);
+      return { member: m, totalScore, totalPosts: uniquePostIds.size };
     })
     .sort((a, b) => b.totalScore - a.totalScore);
 
