@@ -82,7 +82,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 overflow-auto min-h-screen">
         {/* Period selector bar for dashboard and ranking */}
-        {(["/", "/ranking"].includes(location.pathname)) && (
+        {(["/", "/ranking", "/posts"].includes(location.pathname)) && (
           <div className="flex items-center justify-end gap-2 px-8 pt-6 pb-0">
             <PeriodSelector />
           </div>

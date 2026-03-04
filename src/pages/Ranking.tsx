@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Member } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,6 +66,7 @@ export default function Ranking() {
       const totalScore = mp.reduce((a, pc) => a + pc.post!.score, 0);
       return { member: m, totalScore, totalPosts: uniquePostIds.size };
     })
+    .filter((e) => e.totalScore > 0)
     .sort((a, b) => b.totalScore - a.totalScore);
 
   return (
@@ -92,7 +94,7 @@ export default function Ranking() {
                       <AvatarFallback className="font-bold text-sm">{entry.member.name.slice(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <p className="font-semibold">{entry.member.name}</p>
+                      <Link to={`/creators/${entry.member.id}`} className="font-semibold hover:text-primary transition-colors">{entry.member.name}</Link>
                       {entry.member.role && <p className="text-xs text-muted-foreground">{entry.member.role}</p>}
                     </div>
                     <div className="text-center px-4">
