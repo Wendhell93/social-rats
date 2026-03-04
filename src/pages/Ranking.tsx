@@ -3,11 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Member } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trophy } from "lucide-react";
-import { subDays, startOfMonth, isAfter, parseISO } from "date-fns";
-
-type Period = "7d" | "30d" | "month" | "all";
+import { subDays, startOfMonth, isAfter, parseISO, isWithinInterval } from "date-fns";
+import { usePeriod } from "@/contexts/PeriodContext";
 
 interface PostCreatorRow {
   creator_id: string;
@@ -27,8 +25,8 @@ const medals = ["🥇", "🥈", "🥉"];
 export default function Ranking() {
   const [members, setMembers] = useState<Member[]>([]);
   const [postCreators, setPostCreators] = useState<PostCreatorRow[]>([]);
-  const [period, setPeriod] = useState<Period>("all");
   const [loading, setLoading] = useState(true);
+  const { period, customStart, customEnd } = usePeriod();
 
   useEffect(() => {
     async function load() {
@@ -47,9 +45,13 @@ export default function Ranking() {
     const now = new Date();
     return rows.filter((pc) => {
       if (!pc.post) return false;
-      if (period === "7d") return isAfter(parseISO(pc.post.created_at), subDays(now, 7));
-      if (period === "30d") return isAfter(parseISO(pc.post.created_at), subDays(now, 30));
-      if (period === "month") return isAfter(parseISO(pc.post.created_at), startOfMonth(now));
+      const date = parseISO(pc.post.created_at);
+      if (period === "7d") return isAfter(date, subDays(now, 7));
+      if (period === "30d") return isAfter(date, subDays(now, 30));
+      if (period === "month") return isAfter(date, startOfMonth(now));
+      if (period === "custom" && customStart && customEnd) {
+        return isWithinInterval(date, { start: customStart, end: customEnd });
+      }
       return true;
     });
   }
@@ -59,7 +61,6 @@ export default function Ranking() {
   const ranking: RankingEntry[] = members
     .map((m) => {
       const mp = filtered.filter((pc) => pc.creator_id === m.id);
-      // deduplicate by post id to count unique posts
       const uniquePostIds = new Set(mp.map((pc) => pc.post!.id));
       const totalScore = mp.reduce((a, pc) => a + pc.post!.score, 0);
       return { member: m, totalScore, totalPosts: uniquePostIds.size };
@@ -68,22 +69,9 @@ export default function Ranking() {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">Ranking</h1>
-          <p className="text-muted-foreground text-sm mt-1">Classificação por engajamento</p>
-        </div>
-        <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7d">Últimos 7 dias</SelectItem>
-            <SelectItem value="30d">Últimos 30 dias</SelectItem>
-            <SelectItem value="month">Este mês</SelectItem>
-            <SelectItem value="all">Acumulado</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold">Ranking</h1>
+        <p className="text-muted-foreground text-sm mt-1">Classificação por engajamento</p>
       </div>
 
       {loading ? (
@@ -92,7 +80,6 @@ export default function Ranking() {
         <p className="text-muted-foreground text-center py-16">Nenhum dado disponível para este período.</p>
       ) : (
         <div className="space-y-6">
-          {/* Tabela */}
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Trophy className="w-4 h-4 text-primary" /> Classificação</CardTitle></CardHeader>
             <CardContent className="p-0">

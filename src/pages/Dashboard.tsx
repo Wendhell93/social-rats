@@ -1,76 +1,86 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { LayoutDashboard, Users, FileText, Trophy, TrendingUp, Heart, MessageCircle, Share2, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { subDays, startOfMonth, isAfter, parseISO, isWithinInterval } from "date-fns";
+import { usePeriod } from "@/contexts/PeriodContext";
 
-type Stats = {
-  creators: number;
-  posts: number;
-  totalScore: number;
-  totalLikes: number;
-  totalComments: number;
-  totalShares: number;
-  totalSaves: number;
-};
-
+type PostRow = { id: string; score: number; likes: number; comments: number; shares: number; saves: number; created_at: string };
+type PostCreatorRow = { creator_id: string; post: { id: string; score: number; created_at: string } | null };
+type MemberRow = { id: string; name: string; role: string | null };
 type TopCreator = { id: string; name: string; role: string | null; score: number; post_count: number };
 
 export default function Dashboard() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [topCreators, setTopCreators] = useState<TopCreator[]>([]);
+  const [allPosts, setAllPosts] = useState<PostRow[]>([]);
+  const [allPostCreators, setAllPostCreators] = useState<PostCreatorRow[]>([]);
+  const [members, setMembers] = useState<MemberRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const { period, customStart, customEnd } = usePeriod();
 
   useEffect(() => {
     async function load() {
-      const [{ data: creators }, { data: posts }, { data: postCreators }] = await Promise.all([
-        supabase.from("members").select("id"),
-        supabase.from("posts").select("score, likes, comments, shares, saves"),
-        supabase.from("post_creators").select("creator_id, post:posts(score)"),
+      const [{ data: posts }, { data: pc }, { data: m }] = await Promise.all([
+        supabase.from("posts").select("id, score, likes, comments, shares, saves, created_at"),
+        supabase.from("post_creators").select("creator_id, post:posts(id, score, created_at)"),
+        supabase.from("members").select("id, name, role"),
       ]);
-
-      if (posts) {
-        const totalScore = posts.reduce((a, p) => a + (p.score || 0), 0);
-        const totalLikes = posts.reduce((a, p) => a + (p.likes || 0), 0);
-        const totalComments = posts.reduce((a, p) => a + (p.comments || 0), 0);
-        const totalShares = posts.reduce((a, p) => a + (p.shares || 0), 0);
-        const totalSaves = posts.reduce((a, p) => a + (p.saves || 0), 0);
-        setStats({ creators: creators?.length || 0, posts: posts.length, totalScore, totalLikes, totalComments, totalShares, totalSaves });
-      }
-
-      if (postCreators) {
-        const map: Record<string, number> = {};
-        const countMap: Record<string, number> = {};
-        postCreators.forEach((pc: any) => {
-          map[pc.creator_id] = (map[pc.creator_id] || 0) + (pc.post?.score || 0);
-          countMap[pc.creator_id] = (countMap[pc.creator_id] || 0) + 1;
-        });
-        const { data: creatorsData } = await supabase.from("members").select("id, name, role");
-        if (creatorsData) {
-          const ranked = creatorsData
-            .map(c => ({ ...c, score: map[c.id] || 0, post_count: countMap[c.id] || 0 }))
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 5);
-          setTopCreators(ranked);
-        }
-      }
+      if (posts) setAllPosts(posts as PostRow[]);
+      if (pc) setAllPostCreators(pc as PostCreatorRow[]);
+      if (m) setMembers(m);
       setLoading(false);
     }
     load();
   }, []);
 
-  const statCards = stats ? [
-    { label: "Criadores", value: stats.creators, icon: Users, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Posts Cadastrados", value: stats.posts, icon: FileText, color: "text-secondary", bg: "bg-secondary/10" },
-    { label: "Score Total", value: stats.totalScore.toLocaleString(), icon: Trophy, color: "text-amber-400", bg: "bg-amber-400/10" },
-  ] : [];
+  function inPeriod(created_at: string) {
+    const now = new Date();
+    const date = parseISO(created_at);
+    if (period === "7d") return isAfter(date, subDays(now, 7));
+    if (period === "30d") return isAfter(date, subDays(now, 30));
+    if (period === "month") return isAfter(date, startOfMonth(now));
+    if (period === "custom" && customStart && customEnd) return isWithinInterval(date, { start: customStart, end: customEnd });
+    return true;
+  }
 
-  const engagementCards = stats ? [
+  const filteredPosts = useMemo(() => allPosts.filter(p => inPeriod(p.created_at)), [allPosts, period, customStart, customEnd]);
+  const filteredPc = useMemo(() => allPostCreators.filter(pc => pc.post && inPeriod(pc.post.created_at)), [allPostCreators, period, customStart, customEnd]);
+
+  const stats = useMemo(() => ({
+    creators: members.length,
+    posts: filteredPosts.length,
+    totalScore: filteredPosts.reduce((a, p) => a + (p.score || 0), 0),
+    totalLikes: filteredPosts.reduce((a, p) => a + (p.likes || 0), 0),
+    totalComments: filteredPosts.reduce((a, p) => a + (p.comments || 0), 0),
+    totalShares: filteredPosts.reduce((a, p) => a + (p.shares || 0), 0),
+    totalSaves: filteredPosts.reduce((a, p) => a + (p.saves || 0), 0),
+  }), [filteredPosts, members]);
+
+  const topCreators = useMemo(() => {
+    const map: Record<string, number> = {};
+    const countMap: Record<string, number> = {};
+    filteredPc.forEach((pc) => {
+      map[pc.creator_id] = (map[pc.creator_id] || 0) + (pc.post?.score || 0);
+      countMap[pc.creator_id] = (countMap[pc.creator_id] || 0) + 1;
+    });
+    return members
+      .map(c => ({ ...c, score: map[c.id] || 0, post_count: countMap[c.id] || 0 }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+  }, [filteredPc, members]);
+
+  const statCards = [
+    { label: "Criadores", value: stats.creators, icon: Users, color: "text-primary", bg: "bg-primary/10" },
+    { label: "Posts no período", value: stats.posts, icon: FileText, color: "text-secondary", bg: "bg-secondary/10" },
+    { label: "Score Total", value: stats.totalScore.toLocaleString(), icon: Trophy, color: "text-amber-400", bg: "bg-amber-400/10" },
+  ];
+
+  const engagementCards = [
     { label: "Curtidas", value: stats.totalLikes, icon: Heart },
     { label: "Comentários", value: stats.totalComments, icon: MessageCircle },
     { label: "Compartilhamentos", value: stats.totalShares, icon: Share2 },
     { label: "Salvamentos", value: stats.totalSaves, icon: Bookmark },
-  ] : [];
+  ];
 
   return (
     <div className="p-8 animate-fade-in">
@@ -122,16 +132,16 @@ export default function Dashboard() {
               </div>
               <Link to="/ranking" className="text-xs text-primary hover:underline">Ver ranking completo →</Link>
             </div>
-            {topCreators.length === 0 ? (
+            {topCreators.filter(c => c.score > 0).length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground mb-3">Nenhum dado ainda.</p>
+                <p className="text-sm text-muted-foreground mb-3">Nenhum dado para este período.</p>
                 <Button asChild size="sm" className="gradient-primary text-white border-0">
                   <Link to="/posts/new">Cadastrar primeiro post</Link>
                 </Button>
               </div>
             ) : (
               <div className="space-y-3">
-                {topCreators.map((creator, i) => (
+                {topCreators.filter(c => c.score > 0).map((creator, i) => (
                   <Link key={creator.id} to={`/creators/${creator.id}`} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group">
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                       i === 0 ? "bg-amber-400/20 text-amber-400" :
