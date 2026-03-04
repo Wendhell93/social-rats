@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, Users, FileText, Trophy, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PeriodSelector } from "@/components/PeriodSelector";
 
 const RatIcon = () => (
   <svg viewBox="0 0 64 64" className="w-5 h-5" fill="currentColor" style={{ color: "white" }}>
@@ -80,6 +81,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="flex-1 overflow-auto min-h-screen">
+        {/* Period selector bar for dashboard and ranking */}
+        {(["/", "/ranking"].includes(location.pathname)) && (
+          <div className="flex items-center justify-end gap-2 px-8 pt-6 pb-0">
+            <PeriodSelector />
+          </div>
+        )}
         {children}
       </main>
     </div>
