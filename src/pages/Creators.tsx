@@ -4,16 +4,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { Creator } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Users, User, Upload, X, Link as LinkIcon } from "lucide-react";
+import { Plus, Search, Users, User, Upload, X, Link as LinkIcon, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
 
 export default function Creators() {
   const [creators, setCreators] = useState<Creator[]>([]);
+  const [creatorScores, setCreatorScores] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -28,8 +33,18 @@ export default function Creators() {
   const { toast } = useToast();
 
   async function load() {
-    const { data } = await supabase.from("members").select("*").order("name");
-    if (data) setCreators(data);
+    const [{ data: members }, { data: pc }] = await Promise.all([
+      supabase.from("members").select("*").order("name"),
+      supabase.from("post_creators").select("creator_id, post:posts(score)"),
+    ]);
+    if (members) setCreators(members);
+    if (pc) {
+      const scores: Record<string, number> = {};
+      (pc as any[]).forEach(row => {
+        if (row.post?.score) scores[row.creator_id] = (scores[row.creator_id] || 0) + row.post.score;
+      });
+      setCreatorScores(scores);
+    }
     setLoading(false);
   }
 
@@ -143,25 +158,43 @@ export default function Creators() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(c => (
             <div key={c.id} className="bg-card border border-border rounded-xl p-5 card-glow group">
-              <div className="flex items-start gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center flex-shrink-0 border border-primary/20">
-                  {c.avatar_url ? (
-                    <img src={c.avatar_url} alt={c.name} className="w-12 h-12 rounded-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                  ) : (
-                    <User className="w-5 h-5 text-primary" />
-                  )}
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center flex-shrink-0 border border-primary/20">
+                    {c.avatar_url ? (
+                      <img src={c.avatar_url} alt={c.name} className="w-12 h-12 rounded-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    ) : (
+                      <User className="w-5 h-5 text-primary" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate">{c.name}</p>
+                    {c.role && <p className="text-xs text-muted-foreground truncate">{c.role}</p>}
+                    <p className="text-xs font-bold text-primary mt-1 flex items-center gap-1">
+                      <Star className="w-3 h-3" />{(creatorScores[c.id] || 0).toFixed(0)} pts
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold truncate">{c.name}</p>
-                  {c.role && <p className="text-xs text-muted-foreground truncate">{c.role}</p>}
-                </div>
-              </div>
               <div className="flex items-center gap-2">
                 <Link to={`/creators/${c.id}`} className="flex-1">
                   <Button variant="outline" size="sm" className="w-full text-xs border-border hover:border-primary hover:text-primary">Ver perfil</Button>
                 </Link>
                 <Button variant="outline" size="sm" className="text-xs border-border hover:border-primary" onClick={() => openEdit(c)}>Editar</Button>
-                <Button variant="ghost" size="sm" className="text-xs text-destructive hover:text-destructive" onClick={() => del(c.id)}>✕</Button>
+                <Button variant="outline" size="sm" className="text-xs border-border hover:border-primary" onClick={() => openEdit(c)}>Editar</Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-xs text-destructive hover:text-destructive">✕</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="bg-card border-border">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Remover criador?</AlertDialogTitle>
+                      <AlertDialogDescription>Esta ação não pode ser desfeita. Todos os dados de {c.name} serão removidos.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => del(c.id)} className="bg-destructive text-destructive-foreground">Remover</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           ))}

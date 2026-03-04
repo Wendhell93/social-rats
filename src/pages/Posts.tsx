@@ -5,23 +5,29 @@ import { Post, Creator } from "@/lib/types";
 import { PlatformBadge } from "@/components/PlatformBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Heart, MessageCircle, Share2, Bookmark, ExternalLink, Trash2, Pencil, CalendarDays, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, isAfter, subDays, startOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
+import { PeriodSelector } from "@/components/PeriodSelector";
+import { usePeriod } from "@/contexts/PeriodContext";
 
 type PostWithCreators = Post & { post_creators: { creator: Creator }[] };
 
 export default function Posts() {
   const [posts, setPosts] = useState<PostWithCreators[]>([]);
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "score">("date");
+  const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { period, customStart, customEnd } = usePeriod();
 
   async function load() {
     const { data } = await supabase
@@ -42,11 +48,23 @@ export default function Posts() {
 
   const filtered = posts.filter(p => {
     const creatorNames = p.post_creators?.map(pc => pc.creator?.name || "").join(" ") || "";
-    return (
+    const matchSearch = (
       (p.title || p.url).toLowerCase().includes(search.toLowerCase()) ||
       creatorNames.toLowerCase().includes(search.toLowerCase())
     );
-  });
+    const matchPlatform = platformFilter === "all" || p.platform === platformFilter;
+    const dateStr = p.posted_at || p.created_at;
+    const date = parseISO(dateStr);
+    const now = new Date();
+    let matchPeriod = true;
+    if (period === "7d") matchPeriod = isAfter(date, subDays(now, 7));
+    else if (period === "30d") matchPeriod = isAfter(date, subDays(now, 30));
+    else if (period === "month") matchPeriod = isAfter(date, startOfMonth(now));
+    else if (period === "custom" && customStart && customEnd) matchPeriod = isWithinInterval(date, { start: customStart, end: customEnd });
+    return matchSearch && matchPlatform && matchPeriod;
+  }).sort((a, b) => sortBy === "score" ? b.score - a.score : new Date(b.posted_at || b.created_at).getTime() - new Date(a.posted_at || a.created_at).getTime());
+
+  const platforms = Array.from(new Set(posts.map(p => p.platform))).sort();
 
   return (
     <div className="p-8 animate-fade-in">
@@ -63,9 +81,26 @@ export default function Posts() {
         </Button>
       </div>
 
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input className="pl-9 bg-card border-border" placeholder="Buscar por título ou criador..." value={search} onChange={e => setSearch(e.target.value)} />
+      <div className="flex items-center gap-2 mb-6 flex-wrap">
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input className="pl-9 bg-card border-border" placeholder="Buscar por título ou criador..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <Select value={platformFilter} onValueChange={setPlatformFilter}>
+          <SelectTrigger className="w-36 h-10 text-sm"><SelectValue placeholder="Plataforma" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            {platforms.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={v => setSortBy(v as "date" | "score")}>
+          <SelectTrigger className="w-36 h-10 text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="date">Mais recente</SelectItem>
+            <SelectItem value="score">Maior score</SelectItem>
+          </SelectContent>
+        </Select>
+        <PeriodSelector />
       </div>
 
       {loading ? (

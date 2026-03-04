@@ -193,7 +193,16 @@ export default function NewPost() {
 
             {/* Métricas */}
             <Card className="bg-card border-border">
-              <CardHeader className="pb-3"><CardTitle className="text-base">Métricas de Engajamento</CardTitle></CardHeader>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center justify-between">
+                Métricas de Engajamento
+                {weights && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Score = {weights.likes_weight}×❤️ + {weights.comments_weight}×💬 + {weights.shares_weight}×🔁 + {weights.saves_weight}×🔖
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
                   {[

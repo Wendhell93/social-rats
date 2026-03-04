@@ -7,7 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, MessageCircle, Share2, Bookmark, Loader2, ArrowLeft, Plus, X } from "lucide-react";
+import { Heart, MessageCircle, Share2, Bookmark, Loader2, ArrowLeft, Plus, X, CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 type PostWithCreators = Post & { post_creators: { id: string; creator: Creator }[] };
 
@@ -20,8 +25,10 @@ export default function EditPost() {
   const [selectedCreators, setSelectedCreators] = useState<Creator[]>([]);
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
   const [metrics, setMetrics] = useState({ likes: 0, comments: 0, shares: 0, saves: 0 });
+  const [postedAt, setPostedAt] = useState<Date | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [creatorSearch, setCreatorSearch] = useState("");
+  const [openDate, setOpenDate] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -33,6 +40,7 @@ export default function EditPost() {
       if (p) {
         setPost(p as PostWithCreators);
         setMetrics({ likes: p.likes, comments: p.comments, shares: p.shares, saves: p.saves });
+        setPostedAt(p.posted_at ? new Date(p.posted_at) : undefined);
         setSelectedCreators((p as any).post_creators?.map((pc: any) => pc.creator).filter(Boolean) || []);
       }
       if (c) setAllCreators(c);
@@ -54,7 +62,7 @@ export default function EditPost() {
     const score = weights ? calcScore(metrics, weights) : post.score;
 
     // Update metrics
-    const { error } = await supabase.from("posts").update({ ...metrics, score, member_id: selectedCreators[0].id }).eq("id", post.id);
+    const { error } = await supabase.from("posts").update({ ...metrics, score, member_id: selectedCreators[0].id, posted_at: postedAt ? postedAt.toISOString() : null }).eq("id", post.id);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); setSaving(false); return; }
 
     // Sync post_creators: delete all then re-insert
@@ -113,9 +121,36 @@ export default function EditPost() {
           </CardContent>
         </Card>
 
+        {/* Data de Publicação */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3"><CardTitle className="text-base">Data de Publicação</CardTitle></CardHeader>
+          <CardContent>
+            <Popover open={openDate} onOpenChange={setOpenDate}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-full justify-start text-left font-normal border-border bg-input", !postedAt && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {postedAt ? format(postedAt, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 bg-card border-border" align="start">
+                <Calendar mode="single" selected={postedAt} onSelect={(d) => { setPostedAt(d); setOpenDate(false); }} disabled={d => d > new Date()} initialFocus className="p-3 pointer-events-auto" />
+              </PopoverContent>
+            </Popover>
+          </CardContent>
+        </Card>
+
         {/* Métricas */}
         <Card className="bg-card border-border">
-          <CardHeader className="pb-3"><CardTitle className="text-base">Métricas de Engajamento</CardTitle></CardHeader>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center justify-between">
+              Métricas de Engajamento
+              {weights && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  Score = {weights.likes_weight}×❤️ + {weights.comments_weight}×💬 + {weights.shares_weight}×🔁 + {weights.saves_weight}×🔖
+                </span>
+              )}
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               {[
