@@ -2,6 +2,17 @@ import { Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, Users, FileText, Trophy, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const RatIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-white">
+    <ellipse cx="9" cy="14" rx="6" ry="5" />
+    <path d="M15 12c2-1 5-1 6 2" />
+    <path d="M3 10c0-3 2-6 5-6 1.5 0 3 1 3 3" />
+    <circle cx="7" cy="13" r="0.5" fill="currentColor" />
+    <path d="M6 19c0 1-1 2-2 2" />
+    <path d="M12 19c0 1 1 2 2 2" />
+  </svg>
+);
+
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/creators", icon: Users, label: "Criadores" },
@@ -19,11 +30,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="px-6 py-6 border-b border-sidebar-border">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center glow-blue">
-              <Trophy className="w-4 h-4 text-white" />
+              <RatIcon />
             </div>
             <div>
-              <p className="text-sm font-bold text-foreground">RankCreator</p>
-              <p className="text-xs text-muted-foreground">Painel de ranking</p>
+              <p className="text-sm font-bold text-foreground">SocialRats</p>
             </div>
           </div>
         </div>
