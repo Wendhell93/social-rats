@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Creator } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Users, User } from "lucide-react";
+import { Plus, Search, Users, User, Upload, X, Link as LinkIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function Creators() {
   const [creators, setCreators] = useState<Creator[]>([]);
@@ -19,6 +20,11 @@ export default function Creators() {
   const [editCreator, setEditCreator] = useState<Creator | null>(null);
   const [form, setForm] = useState({ name: "", role: "", avatar_url: "" });
   const [saving, setSaving] = useState(false);
+  const [avatarTab, setAvatarTab] = useState<"url" | "upload">("url");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   async function load() {
@@ -32,19 +38,53 @@ export default function Creators() {
   function openNew() {
     setEditCreator(null);
     setForm({ name: "", role: "", avatar_url: "" });
+    setAvatarTab("url");
+    setUploadFile(null);
+    setUploadPreview(null);
     setOpen(true);
   }
 
   function openEdit(c: Creator) {
     setEditCreator(c);
     setForm({ name: c.name, role: c.role || "", avatar_url: c.avatar_url || "" });
+    setAvatarTab("url");
+    setUploadFile(null);
+    setUploadPreview(null);
     setOpen(true);
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadFile(file);
+    setUploadPreview(URL.createObjectURL(file));
+  }
+
+  async function uploadAvatar(): Promise<string | null> {
+    if (!uploadFile) return null;
+    setUploading(true);
+    const ext = uploadFile.name.split(".").pop();
+    const path = `${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("avatars").upload(path, uploadFile, { upsert: true });
+    setUploading(false);
+    if (error) {
+      toast({ title: "Erro ao fazer upload", description: error.message, variant: "destructive" });
+      return null;
+    }
+    const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+    return data.publicUrl;
   }
 
   async function save() {
     if (!form.name.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
     setSaving(true);
-    const payload = { name: form.name.trim(), role: form.role.trim() || null, avatar_url: form.avatar_url.trim() || null };
+    let avatar_url = form.avatar_url.trim() || null;
+    if (avatarTab === "upload" && uploadFile) {
+      const url = await uploadAvatar();
+      if (!url) { setSaving(false); return; }
+      avatar_url = url;
+    }
+    const payload = { name: form.name.trim(), role: form.role.trim() || null, avatar_url };
     const { error } = editCreator
       ? await supabase.from("members").update(payload).eq("id", editCreator.id)
       : await supabase.from("members").insert(payload);
@@ -143,14 +183,48 @@ export default function Creators() {
               <Input placeholder="Ex: Motion Designer, Videomaker..." value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className="bg-input border-border" />
             </div>
             <div>
-              <Label className="text-sm mb-1.5 block">URL do Avatar</Label>
-              <Input placeholder="https://..." value={form.avatar_url} onChange={e => setForm(f => ({ ...f, avatar_url: e.target.value }))} className="bg-input border-border" />
+              <Label className="text-sm mb-1.5 block">Avatar</Label>
+              <Tabs value={avatarTab} onValueChange={v => setAvatarTab(v as "url" | "upload")}>
+                <TabsList className="mb-3 bg-muted/40 border border-border h-9">
+                  <TabsTrigger value="url" className="text-xs gap-1.5 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                    <LinkIcon className="w-3 h-3" /> URL
+                  </TabsTrigger>
+                  <TabsTrigger value="upload" className="text-xs gap-1.5 data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                    <Upload className="w-3 h-3" /> Upload
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="url">
+                  <Input placeholder="https://..." value={form.avatar_url} onChange={e => setForm(f => ({ ...f, avatar_url: e.target.value }))} className="bg-input border-border" />
+                </TabsContent>
+                <TabsContent value="upload">
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                  {uploadPreview ? (
+                    <div className="relative w-fit">
+                      <img src={uploadPreview} alt="preview" className="w-20 h-20 rounded-full object-cover border-2 border-primary/40" />
+                      <button
+                        onClick={() => { setUploadFile(null); setUploadPreview(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                        className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive flex items-center justify-center"
+                      >
+                        <X className="w-3 h-3 text-white" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-24 rounded-lg border-2 border-dashed border-border hover:border-primary/60 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <Upload className="w-6 h-6" />
+                      <span className="text-xs">Clique para selecionar imagem</span>
+                    </button>
+                  )}
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)} className="border-border">Cancelar</Button>
-            <Button onClick={save} disabled={saving} className="gradient-primary text-white border-0">
-              {saving ? "Salvando..." : "Salvar"}
+            <Button onClick={save} disabled={saving || uploading} className="gradient-primary text-white border-0">
+              {saving || uploading ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>
