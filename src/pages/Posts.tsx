@@ -120,6 +120,7 @@ export default function Posts() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1.5">
                     <PlatformBadge platform={post.platform} />
+                    <ContentTypeBadge contentType={(post as any).content_type ?? null} />
                     {post.post_creators?.map(pc => pc.creator && (
                       <Link key={pc.creator.id} to={`/creators/${pc.creator.id}`} className="text-xs text-muted-foreground hover:text-primary transition-colors">
                         {pc.creator.name}
