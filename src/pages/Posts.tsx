@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Post, Creator } from "@/lib/types";
 import { PlatformBadge } from "@/components/PlatformBadge";
+import { ContentTypeBadge } from "@/components/ContentTypeBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
