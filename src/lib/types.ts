@@ -23,6 +23,7 @@ export type Post = {
   score: number;
   posted_at: string | null;
   created_at: string;
+  content_type: string | null;
   member?: Creator;
   post_creators?: { creator: Creator }[];
 };
@@ -40,6 +41,22 @@ export type EngagementWeights = {
   shares_weight: number;
   saves_weight: number;
   updated_at: string;
+};
+
+export type ContentTypeMultipliers = {
+  id: string;
+  technical: number;
+  meme: number;
+  announcement: number;
+  updated_at: string;
+};
+
+export type ContentType = "technical" | "meme" | "announcement" | null;
+
+export const CONTENT_TYPE_LABELS: Record<string, string> = {
+  technical: "Técnico",
+  meme: "Meme",
+  announcement: "Anúncio",
 };
 
 export type RankedCreator = Creator & {
@@ -64,12 +81,24 @@ export function detectPlatform(url: string): string | null {
 
 export function calcScore(
   metrics: { likes: number; comments: number; shares: number; saves: number },
-  weights: EngagementWeights
+  weights: EngagementWeights,
+  multiplier: number = 1.0
 ): number {
-  return (
+  const base =
     metrics.likes * weights.likes_weight +
     metrics.comments * weights.comments_weight +
     metrics.shares * weights.shares_weight +
-    metrics.saves * weights.saves_weight
-  );
+    metrics.saves * weights.saves_weight;
+  return base * multiplier;
+}
+
+export function getMultiplier(
+  contentType: string | null,
+  multipliers: ContentTypeMultipliers | null
+): number {
+  if (!contentType || !multipliers) return 1.0;
+  if (contentType === "technical") return multipliers.technical;
+  if (contentType === "meme") return multipliers.meme;
+  if (contentType === "announcement") return multipliers.announcement;
+  return 1.0;
 }
