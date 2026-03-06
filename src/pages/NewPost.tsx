@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { detectPlatform, calcScore, EngagementWeights, Creator } from "@/lib/types";
+import {
+  detectPlatform, calcScore, getMultiplier,
+  EngagementWeights, ContentTypeMultipliers, Creator, CONTENT_TYPE_LABELS
+} from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +17,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { ContentTypePicker } from "@/components/ContentTypePicker";
 
 export default function NewPost() {
   const navigate = useNavigate();
@@ -23,22 +27,26 @@ export default function NewPost() {
   const [selectedCreators, setSelectedCreators] = useState<Creator[]>([]);
   const [creators, setCreators] = useState<Creator[]>([]);
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
+  const [multipliers, setMultipliers] = useState<ContentTypeMultipliers | null>(null);
   const [saving, setSaving] = useState(false);
   const [metrics, setMetrics] = useState({ likes: 0, comments: 0, shares: 0, saves: 0 });
   const [postedAt, setPostedAt] = useState<Date | undefined>(undefined);
   const [creatorSearch, setCreatorSearch] = useState("");
+  const [contentType, setContentType] = useState<string | null>(null);
 
   const platform = detectPlatform(url);
   const showForm = !!platform;
 
   useEffect(() => {
     async function load() {
-      const [{ data: m }, { data: w }] = await Promise.all([
+      const [{ data: m }, { data: w }, { data: mp }] = await Promise.all([
         supabase.from("members").select("*").order("name"),
         supabase.from("engagement_weights").select("*").limit(1).single(),
+        supabase.from("content_type_multipliers").select("*").limit(1).single(),
       ]);
       if (m) setCreators(m);
       if (w) setWeights(w);
+      if (mp) setMultipliers(mp as ContentTypeMultipliers);
     }
     load();
   }, []);
@@ -53,7 +61,8 @@ export default function NewPost() {
     if (selectedCreators.length === 0) { toast({ title: "Selecione ao menos um criador", variant: "destructive" }); return; }
     if (!platform) { toast({ title: "URL inválida", variant: "destructive" }); return; }
     setSaving(true);
-    const score = weights ? calcScore(metrics, weights) : 0;
+    const mult = getMultiplier(contentType, multipliers);
+    const score = weights ? calcScore(metrics, weights, mult) : 0;
 
     const { data: post, error } = await supabase.from("posts").insert({
       member_id: selectedCreators[0].id,
@@ -63,6 +72,7 @@ export default function NewPost() {
       thumbnail_url: null,
       ...metrics,
       score,
+      content_type: contentType,
       posted_at: postedAt ? postedAt.toISOString() : null,
     }).select().single();
 
@@ -72,7 +82,6 @@ export default function NewPost() {
       return;
     }
 
-    // Insert post_creators
     const { error: pcError } = await supabase.from("post_creators").insert(
       selectedCreators.map(c => ({ post_id: post.id, creator_id: c.id }))
     );
@@ -86,7 +95,8 @@ export default function NewPost() {
     setSaving(false);
   }
 
-  const score = weights ? calcScore(metrics, weights) : 0;
+  const mult = getMultiplier(contentType, multipliers);
+  const score = weights ? calcScore(metrics, weights, mult) : 0;
   const filteredCreators = creators.filter(c =>
     c.name.toLowerCase().includes(creatorSearch.toLowerCase()) &&
     !selectedCreators.find(sc => sc.id === c.id)
@@ -128,11 +138,22 @@ export default function NewPost() {
               </CardContent>
             </Card>
 
+            {/* Tipo de Conteúdo */}
+            <Card className="bg-card border-border">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Tipo de Conteúdo</CardTitle></CardHeader>
+              <CardContent>
+                <ContentTypePicker
+                  value={contentType}
+                  onChange={setContentType}
+                  multipliers={multipliers}
+                />
+              </CardContent>
+            </Card>
+
             {/* Criadores */}
             <Card className="bg-card border-border">
               <CardHeader className="pb-3"><CardTitle className="text-base">Criadores *</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                {/* Selected */}
                 {selectedCreators.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {selectedCreators.map(c => (
@@ -143,7 +164,6 @@ export default function NewPost() {
                     ))}
                   </div>
                 )}
-                {/* Search */}
                 <div className="relative">
                   <Input
                     placeholder="Buscar criador..."
@@ -193,16 +213,16 @@ export default function NewPost() {
 
             {/* Métricas */}
             <Card className="bg-card border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center justify-between">
-                Métricas de Engajamento
-                {weights && (
-                  <span className="text-xs font-normal text-muted-foreground">
-                    Score = {weights.likes_weight}×❤️ + {weights.comments_weight}×💬 + {weights.shares_weight}×🔁 + {weights.saves_weight}×🔖
-                  </span>
-                )}
-              </CardTitle>
-            </CardHeader>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center justify-between">
+                  Métricas de Engajamento
+                  {weights && (
+                    <span className="text-xs font-normal text-muted-foreground">
+                      Score = {weights.likes_weight}×❤️ + {weights.comments_weight}×💬 + {weights.shares_weight}×🔁 + {weights.saves_weight}×🔖
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
                   {[
@@ -224,7 +244,14 @@ export default function NewPost() {
                   ))}
                 </div>
                 <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Score calculado:</span>
+                  <div>
+                    <span className="text-sm text-muted-foreground">Score calculado</span>
+                    {contentType && mult !== 1.0 && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        (×{mult} {CONTENT_TYPE_LABELS[contentType]})
+                      </span>
+                    )}
+                  </div>
                   <span className="text-2xl font-bold gradient-text">{score.toFixed(0)} pts</span>
                 </div>
               </CardContent>
