@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Post, Creator, EngagementWeights, calcScore } from "@/lib/types";
+import {
+  Post, Creator, EngagementWeights, ContentTypeMultipliers,
+  calcScore, getMultiplier, CONTENT_TYPE_LABELS
+} from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +16,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { ContentTypePicker } from "@/components/ContentTypePicker";
 
 type PostWithCreators = Post & { post_creators: { id: string; creator: Creator }[] };
 
@@ -24,27 +28,32 @@ export default function EditPost() {
   const [allCreators, setAllCreators] = useState<Creator[]>([]);
   const [selectedCreators, setSelectedCreators] = useState<Creator[]>([]);
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
+  const [multipliers, setMultipliers] = useState<ContentTypeMultipliers | null>(null);
   const [metrics, setMetrics] = useState({ likes: 0, comments: 0, shares: 0, saves: 0 });
   const [postedAt, setPostedAt] = useState<Date | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [creatorSearch, setCreatorSearch] = useState("");
   const [openDate, setOpenDate] = useState(false);
+  const [contentType, setContentType] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
-      const [{ data: p }, { data: c }, { data: w }] = await Promise.all([
+      const [{ data: p }, { data: c }, { data: w }, { data: mp }] = await Promise.all([
         supabase.from("posts").select("*, post_creators(id, creator:members(*))").eq("id", id!).single(),
         supabase.from("members").select("*").order("name"),
         supabase.from("engagement_weights").select("*").limit(1).single(),
+        supabase.from("content_type_multipliers").select("*").limit(1).single(),
       ]);
       if (p) {
         setPost(p as PostWithCreators);
         setMetrics({ likes: p.likes, comments: p.comments, shares: p.shares, saves: p.saves });
         setPostedAt(p.posted_at ? new Date(p.posted_at) : undefined);
         setSelectedCreators((p as any).post_creators?.map((pc: any) => pc.creator).filter(Boolean) || []);
+        setContentType((p as any).content_type ?? null);
       }
       if (c) setAllCreators(c);
       if (w) setWeights(w);
+      if (mp) setMultipliers(mp as ContentTypeMultipliers);
     }
     load();
   }, [id]);
@@ -59,13 +68,18 @@ export default function EditPost() {
     if (!post) return;
     if (selectedCreators.length === 0) { toast({ title: "Selecione ao menos um criador", variant: "destructive" }); return; }
     setSaving(true);
-    const score = weights ? calcScore(metrics, weights) : post.score;
+    const mult = getMultiplier(contentType, multipliers);
+    const score = weights ? calcScore(metrics, weights, mult) : post.score;
 
-    // Update metrics
-    const { error } = await supabase.from("posts").update({ ...metrics, score, member_id: selectedCreators[0].id, posted_at: postedAt ? postedAt.toISOString() : null }).eq("id", post.id);
+    const { error } = await supabase.from("posts").update({
+      ...metrics,
+      score,
+      content_type: contentType,
+      member_id: selectedCreators[0].id,
+      posted_at: postedAt ? postedAt.toISOString() : null,
+    }).eq("id", post.id);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); setSaving(false); return; }
 
-    // Sync post_creators: delete all then re-insert
     await supabase.from("post_creators").delete().eq("post_id", post.id);
     await supabase.from("post_creators").insert(selectedCreators.map(c => ({ post_id: post.id, creator_id: c.id })));
 
@@ -74,7 +88,8 @@ export default function EditPost() {
     setSaving(false);
   }
 
-  const score = weights ? calcScore(metrics, weights) : 0;
+  const mult = getMultiplier(contentType, multipliers);
+  const score = weights ? calcScore(metrics, weights, mult) : 0;
   const filteredCreators = allCreators.filter(c =>
     c.name.toLowerCase().includes(creatorSearch.toLowerCase()) &&
     !selectedCreators.find(sc => sc.id === c.id)
@@ -118,6 +133,18 @@ export default function EditPost() {
               ))}
               {filteredCreators.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Nenhum resultado</p>}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Tipo de Conteúdo */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3"><CardTitle className="text-base">Tipo de Conteúdo</CardTitle></CardHeader>
+          <CardContent>
+            <ContentTypePicker
+              value={contentType}
+              onChange={setContentType}
+              multipliers={multipliers}
+            />
           </CardContent>
         </Card>
 
@@ -170,7 +197,14 @@ export default function EditPost() {
               ))}
             </div>
             <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Score calculado:</span>
+              <div>
+                <span className="text-sm text-muted-foreground">Score calculado</span>
+                {contentType && mult !== 1.0 && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    (×{mult} {CONTENT_TYPE_LABELS[contentType]})
+                  </span>
+                )}
+              </div>
               <span className="text-2xl font-bold gradient-text">{score.toFixed(0)} pts</span>
             </div>
           </CardContent>
