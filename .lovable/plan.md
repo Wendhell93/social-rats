@@ -1,64 +1,76 @@
 
-## Análise completa do app — Sugestões de melhoria
+## Plan: Content Type Classification with Score Multipliers
 
-Analisei todas as páginas: Dashboard, Ranking, Posts, Criadores, Perfil do Criador, Novo Post e Editar Post. Aqui estão as principais oportunidades organizadas por impacto.
+### What needs to be done
 
----
-
-### UX / Usabilidade
-
-**1. Filtro de período na aba Posts**
-Hoje o filtro de período existe no Dashboard e Ranking, mas a listagem de Posts não tem filtro nenhum (apenas busca por texto). Com muitos posts, fica difícil visualizar por período.
-
-**2. Ranking mostra todos os criadores, mesmo com 0 pontos**
-O ranking exibe criadores sem nenhum post no período, o que polui a lista. Deveria ocultar quem não tem pontos ou mostrar separado.
-
-**3. EditPost não tem campo de data de publicação**
-O formulário de Novo Post tem campo de data, mas o de Edição não. Se a data foi esquecida ou errada, não dá para corrigir.
-
-**4. Exclusão de criador sem confirmação**
-O botão "✕" na lista de criadores não tem nenhum `AlertDialog` de confirmação — diferente da exclusão de posts que tem. Pode causar exclusões acidentais.
-
-**5. Criadores sem score visível na listagem**
-Os cards de criadores não mostram o score total acumulado. O usuário precisa entrar no perfil para ver. Exibir o score diretamente no card daria uma visão imediata.
+1. **Database**: Add a `content_type_multipliers` table and a `content_type` column to `posts`.
+2. **Types**: Update `Post` type and add `ContentTypeMultipliers` type in `src/lib/types.ts`. Update `calcScore` to accept an optional multiplier.
+3. **NewPost & EditPost**: Add a "Tipo de conteúdo" selector (Técnico / Meme / Anúncio) with a neutral default (nenhum). Score preview must apply the multiplier live.
+4. **Settings**: Add a new section "Multiplicadores por Tipo de Conteúdo" with inputs for each type. Saving must recalculate all post scores applying the correct multiplier per post.
+5. **Posts list**: Show the content type badge next to the platform badge.
+6. **Score recalculation**: When weights or multipliers change in Settings, recalculate every post's score as `baseScore × multiplier`.
 
 ---
 
-### Funcionalidade
+### Database changes
 
-**6. Fórmula de score visível**
-As configurações têm os pesos, mas em nenhum lugar do app é explicado como o score é calculado. Um tooltip ou linha explicativa em "Métricas" (ex: "Score = 1×curtidas + 3×comentários + 5×compartilhamentos + 2×salvamentos") ajudaria muito.
+**New table** `content_type_multipliers`:
+```sql
+CREATE TABLE public.content_type_multipliers (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  technical numeric NOT NULL DEFAULT 1.0,
+  meme numeric NOT NULL DEFAULT 1.0,
+  announcement numeric NOT NULL DEFAULT 1.0,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
-**7. Página de Settings — configurações básicas do app**
-A rota `/settings` existe mas não foi analisada. Se estiver vazia ou só com pesos, poderia ganhar o título do ranking, nome da equipe, etc.
+INSERT INTO public.content_type_multipliers (technical, meme, announcement)
+VALUES (1.0, 1.0, 1.0);
 
-**8. Permalink do criador no ranking**
-Os nomes no ranking não são clicáveis para ir ao perfil. Só o Dashboard tem esse link.
+ALTER TABLE public.posts ADD COLUMN content_type text DEFAULT NULL;
 
-**9. Ordenação e filtros na listagem de Posts**
-Além da busca por texto, adicionar ordenação (mais recente, maior score, plataforma) tornaria o gerenciamento muito mais prático.
-
----
-
-### Proposta de implementação por prioridade
-
-```
-ALTA PRIORIDADE (impacto imediato)
-├── Confirmação ao excluir criador
-├── Campo de data na edição de post
-├── Ranking clicável para perfil do criador
-└── Ocultar criadores com 0 pontos no ranking (ou destacar)
-
-MÉDIA PRIORIDADE (melhora produtividade)
-├── Score visível no card de criador
-├── Tooltip da fórmula de score em Novo/Editar Post
-└── Ordenação na listagem de Posts
-
-BAIXA PRIORIDADE (refinamento)
-└── Filtro de período na listagem de Posts
+-- RLS
+ALTER TABLE public.content_type_multipliers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read multipliers" ON public.content_type_multipliers FOR SELECT USING (true);
+CREATE POLICY "Public update multipliers" ON public.content_type_multipliers FOR UPDATE USING (true);
 ```
 
+**Content types** (values stored in `posts.content_type`): `technical`, `meme`, `announcement`, or `NULL` (no type).
+
 ---
 
-**O que você quer implementar?**
-Posso fazer tudo de uma vez ou em partes — me diga o que tem mais urgência ou aprove o plano completo.
+### Score formula
+
+```
+score = (likes×likes_w + comments×comments_w + shares×shares_w + saves×saves_w) × content_type_multiplier
+```
+
+If `content_type` is null → multiplier = 1.0 (no effect).
+
+---
+
+### Files to change
+
+| File | Change |
+|---|---|
+| `src/lib/types.ts` | Add `ContentTypeMultipliers` type, add `content_type` to `Post`, update `calcScore` signature |
+| `src/pages/NewPost.tsx` | Add content type selector, apply multiplier in score preview |
+| `src/pages/EditPost.tsx` | Add content type selector (pre-filled), apply multiplier in score preview |
+| `src/pages/Settings.tsx` | New card section for multiplier config per type, save + recalculate |
+| `src/pages/Posts.tsx` | Show content type badge on post card |
+
+---
+
+### UX in forms (NewPost / EditPost)
+
+A segmented selector with 4 options:
+- **Nenhum** (default, multiplier = 1×, no label shown)
+- **Técnico** (e.g., 1.2×)
+- **Meme** (e.g., 0.5×)
+- **Anúncio** (e.g., 1.3×)
+
+The score preview will update live to reflect the multiplier.
+
+### UX in Settings
+
+A new card below the existing "Pesos de Engajamento" card titled "Multiplicadores por Tipo de Conteúdo", with 3 rows (Técnico, Meme, Anúncio), each with a numeric input (step 0.1, min 0). Saving the whole settings page triggers recalculation of all posts' scores with the correct multiplier applied per-type.
