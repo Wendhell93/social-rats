@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      content_type_multipliers: {
+        Row: {
+          announcement: number
+          id: string
+          meme: number
+          technical: number
+          updated_at: string
+        }
+        Insert: {
+          announcement?: number
+          id?: string
+          meme?: number
+          technical?: number
+          updated_at?: string
+        }
+        Update: {
+          announcement?: number
+          id?: string
+          meme?: number
+          technical?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       engagement_weights: {
         Row: {
           comments_weight: number
@@ -101,6 +125,7 @@ export type Database = {
       posts: {
         Row: {
           comments: number
+          content_type: string | null
           created_at: string
           id: string
           likes: number
@@ -116,6 +141,7 @@ export type Database = {
         }
         Insert: {
           comments?: number
+          content_type?: string | null
           created_at?: string
           id?: string
           likes?: number
@@ -131,6 +157,7 @@ export type Database = {
         }
         Update: {
           comments?: number
+          content_type?: string | null
           created_at?: string
           id?: string
           likes?: number
