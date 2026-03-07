@@ -8,8 +8,8 @@ import { usePeriod } from "@/contexts/PeriodContext";
 
 type PostRow = { id: string; score: number; likes: number; comments: number; shares: number; saves: number; created_at: string };
 type PostCreatorRow = { creator_id: string; post: { id: string; score: number; created_at: string } | null };
-type MemberRow = { id: string; name: string; role: string | null };
-type TopCreator = { id: string; name: string; role: string | null; score: number; post_count: number };
+type MemberRow = { id: string; name: string; role: string | null; avatar_url: string | null };
+type TopCreator = { id: string; name: string; role: string | null; avatar_url: string | null; score: number; post_count: number };
 
 export default function Dashboard() {
   const [allPosts, setAllPosts] = useState<PostRow[]>([]);
