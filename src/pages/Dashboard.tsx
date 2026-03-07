@@ -143,13 +143,26 @@ export default function Dashboard() {
               <div className="space-y-3">
                 {topCreators.filter(c => c.score > 0).map((creator, i) => (
                   <Link key={creator.id} to={`/creators/${creator.id}`} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                      i === 0 ? "bg-amber-400/20 text-amber-400" :
-                      i === 1 ? "bg-slate-400/20 text-slate-400" :
-                      i === 2 ? "bg-orange-400/20 text-orange-400" :
-                      "bg-muted text-muted-foreground"
-                    }`}>
-                      {i + 1}
+                    <div className="relative flex-shrink-0">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden ${
+                        !creator.avatar_url ? (
+                          i === 0 ? "bg-amber-400/20 text-amber-400" :
+                          i === 1 ? "bg-slate-400/20 text-slate-400" :
+                          i === 2 ? "bg-orange-400/20 text-orange-400" :
+                          "bg-muted text-muted-foreground"
+                        ) : ""
+                      }`}>
+                        {creator.avatar_url
+                          ? <img src={creator.avatar_url} alt={creator.name} className="w-full h-full object-cover" />
+                          : creator.name.charAt(0).toUpperCase()
+                        }
+                      </div>
+                      <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold border border-card ${
+                        i === 0 ? "bg-amber-400 text-amber-950" :
+                        i === 1 ? "bg-slate-400 text-slate-950" :
+                        i === 2 ? "bg-orange-400 text-orange-950" :
+                        "bg-muted text-muted-foreground"
+                      }`}>{i + 1}</div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium group-hover:text-primary transition-colors truncate">{creator.name}</p>
