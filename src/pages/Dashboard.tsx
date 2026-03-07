@@ -23,7 +23,7 @@ export default function Dashboard() {
       const [{ data: posts }, { data: pc }, { data: m }] = await Promise.all([
         supabase.from("posts").select("id, score, likes, comments, shares, saves, created_at"),
         supabase.from("post_creators").select("creator_id, post:posts(id, score, created_at)"),
-        supabase.from("members").select("id, name, role"),
+        supabase.from("members").select("id, name, role, avatar_url"),
       ]);
       if (posts) setAllPosts(posts as PostRow[]);
       if (pc) setAllPostCreators(pc as PostCreatorRow[]);
