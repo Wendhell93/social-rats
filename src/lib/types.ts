@@ -110,20 +110,19 @@ export function calcScore(
 }
 
 /**
- * Stories score formula (fixed weights, no content-type multiplier):
- * Score = (views_pico × 0.25) + (interactions × 3) + (forwards × 5) + (cta_clicks × 10)
+ * Stories score formula with configurable weights.
+ * Defaults: views_pico×0.25, interactions×3, forwards×5, cta_clicks×10
  */
-export function calcScoreStories(metrics: {
-  views_pico: number;
-  interactions: number;
-  forwards: number;
-  cta_clicks: number;
-}): number {
+export function calcScoreStories(
+  metrics: { views_pico: number; interactions: number; forwards: number; cta_clicks: number },
+  weights?: Pick<StoriesWeights, "views_pico_weight" | "interactions_weight" | "forwards_weight" | "cta_clicks_weight">
+): number {
+  const w = weights ?? { views_pico_weight: 0.25, interactions_weight: 3, forwards_weight: 5, cta_clicks_weight: 10 };
   return (
-    metrics.views_pico * 0.25 +
-    metrics.interactions * 3 +
-    metrics.forwards * 5 +
-    metrics.cta_clicks * 10
+    metrics.views_pico * w.views_pico_weight +
+    metrics.interactions * w.interactions_weight +
+    metrics.forwards * w.forwards_weight +
+    metrics.cta_clicks * w.cta_clicks_weight
   );
 }
 
