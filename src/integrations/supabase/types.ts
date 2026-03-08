@@ -196,6 +196,33 @@ export type Database = {
           },
         ]
       }
+      stories_weights: {
+        Row: {
+          cta_clicks_weight: number
+          forwards_weight: number
+          id: string
+          interactions_weight: number
+          updated_at: string
+          views_pico_weight: number
+        }
+        Insert: {
+          cta_clicks_weight?: number
+          forwards_weight?: number
+          id?: string
+          interactions_weight?: number
+          updated_at?: string
+          views_pico_weight?: number
+        }
+        Update: {
+          cta_clicks_weight?: number
+          forwards_weight?: number
+          id?: string
+          interactions_weight?: number
+          updated_at?: string
+          views_pico_weight?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
