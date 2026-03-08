@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Post, Creator, EngagementWeights, ContentTypeMultipliers,
+  Post, Creator, EngagementWeights, ContentTypeMultipliers, StoriesWeights,
   calcScore, calcScoreStories, getMultiplier, CONTENT_TYPE_LABELS, PostFormat
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ export default function EditPost() {
   const [selectedCreators, setSelectedCreators] = useState<Creator[]>([]);
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
   const [multipliers, setMultipliers] = useState<ContentTypeMultipliers | null>(null);
+  const [storiesWeights, setStoriesWeights] = useState<StoriesWeights | null>(null);
   const [postFormat, setPostFormat] = useState<PostFormat>("feed");
   const [metrics, setMetrics] = useState({ likes: 0, comments: 0, shares: 0, saves: 0 });
   const [storiesMetrics, setStoriesMetrics] = useState({ views_pico: 0, interactions: 0, forwards: 0, cta_clicks: 0 });
@@ -44,11 +45,12 @@ export default function EditPost() {
 
   useEffect(() => {
     async function load() {
-      const [{ data: p }, { data: c }, { data: w }, { data: mp }] = await Promise.all([
+      const [{ data: p }, { data: c }, { data: w }, { data: mp }, { data: sw }] = await Promise.all([
         supabase.from("posts").select("*, post_creators(id, creator:members(*))").eq("id", id!).single(),
         supabase.from("members").select("*").order("name"),
         supabase.from("engagement_weights").select("*").limit(1).single(),
         supabase.from("content_type_multipliers").select("*").limit(1).single(),
+        (supabase as any).from("stories_weights").select("*").limit(1).single(),
       ]);
       if (p) {
         const postData = p as any;
@@ -68,6 +70,7 @@ export default function EditPost() {
       if (c) setAllCreators(c);
       if (w) setWeights(w);
       if (mp) setMultipliers(mp as ContentTypeMultipliers);
+      if (sw) setStoriesWeights(sw as StoriesWeights);
     }
     load();
   }, [id]);
@@ -85,7 +88,7 @@ export default function EditPost() {
 
     let score = 0;
     if (postFormat === "stories") {
-      score = calcScoreStories(storiesMetrics);
+      score = calcScoreStories(storiesMetrics, storiesWeights ?? undefined);
     } else {
       const mult = getMultiplier(contentType, multipliers);
       score = weights ? calcScore(metrics, weights, mult) : post.score;
@@ -115,7 +118,7 @@ export default function EditPost() {
 
   const mult = getMultiplier(contentType, multipliers);
   const previewScore = postFormat === "stories"
-    ? calcScoreStories(storiesMetrics)
+    ? calcScoreStories(storiesMetrics, storiesWeights ?? undefined)
     : (weights ? calcScore(metrics, weights, mult) : 0);
 
   const filteredCreators = allCreators.filter(c =>
@@ -161,7 +164,7 @@ export default function EditPost() {
               ))}
             </div>
             {postFormat === "stories" && (
-              <div className="mt-3 flex items-start gap-2 rounded-lg bg-violet-500/10 border border-violet-500/20 px-3 py-2.5 text-xs text-violet-400">
+              <div className="mt-3 flex items-start gap-2 rounded-lg bg-primary/10 border border-primary/20 px-3 py-2.5 text-xs text-primary">
                 <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
                 <span>
                   <strong>Regras Stories:</strong> views_pico = story com mais views do dia; máx. 10 stories elegíveis por criador/dia; fórmula fixa sem multiplicador de tipo.
