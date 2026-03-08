@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   detectPlatform, calcScore, calcScoreStories, getMultiplier,
-  EngagementWeights, ContentTypeMultipliers, Creator, CONTENT_TYPE_LABELS, PostFormat
+  EngagementWeights, ContentTypeMultipliers, StoriesWeights, Creator, CONTENT_TYPE_LABELS, PostFormat
 } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

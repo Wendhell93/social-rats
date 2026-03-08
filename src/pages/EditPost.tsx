@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Post, Creator, EngagementWeights, ContentTypeMultipliers,
+  Post, Creator, EngagementWeights, ContentTypeMultipliers, StoriesWeights,
   calcScore, calcScoreStories, getMultiplier, CONTENT_TYPE_LABELS, PostFormat
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
