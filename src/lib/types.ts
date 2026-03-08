@@ -59,6 +59,15 @@ export type ContentTypeMultipliers = {
   updated_at: string;
 };
 
+export type StoriesWeights = {
+  id: string;
+  views_pico_weight: number;
+  interactions_weight: number;
+  forwards_weight: number;
+  cta_clicks_weight: number;
+  updated_at: string;
+};
+
 export type ContentType = "technical" | "meme" | "announcement" | null;
 
 export const CONTENT_TYPE_LABELS: Record<string, string> = {
