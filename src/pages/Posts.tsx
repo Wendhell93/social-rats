@@ -4,10 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Post, Creator } from "@/lib/types";
 import { PlatformBadge } from "@/components/PlatformBadge";
 import { ContentTypeBadge } from "@/components/ContentTypeBadge";
+import { FormatBadge } from "@/components/FormatBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Heart, MessageCircle, Share2, Bookmark, ExternalLink, Trash2, Pencil, CalendarDays, FileText } from "lucide-react";
+import {
+  Plus, Search, Heart, MessageCircle, Share2, Bookmark, ExternalLink,
+  Trash2, Pencil, CalendarDays, FileText, Eye, Repeat2, MousePointerClick
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, isAfter, subDays, startOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -25,6 +29,7 @@ export default function Posts() {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "score">("date");
   const [platformFilter, setPlatformFilter] = useState<string>("all");
+  const [formatFilter, setFormatFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -54,6 +59,7 @@ export default function Posts() {
       creatorNames.toLowerCase().includes(search.toLowerCase())
     );
     const matchPlatform = platformFilter === "all" || p.platform === platformFilter;
+    const matchFormat = formatFilter === "all" || (p.format || "feed") === formatFilter;
     const dateStr = p.posted_at || p.created_at;
     const date = parseISO(dateStr);
     const now = new Date();
@@ -62,7 +68,7 @@ export default function Posts() {
     else if (period === "30d") matchPeriod = isAfter(date, subDays(now, 30));
     else if (period === "month") matchPeriod = isAfter(date, startOfMonth(now));
     else if (period === "custom" && customStart && customEnd) matchPeriod = isWithinInterval(date, { start: customStart, end: customEnd });
-    return matchSearch && matchPlatform && matchPeriod;
+    return matchSearch && matchPlatform && matchFormat && matchPeriod;
   }).sort((a, b) => sortBy === "score" ? b.score - a.score : new Date(b.posted_at || b.created_at).getTime() - new Date(a.posted_at || a.created_at).getTime());
 
   const platforms = Array.from(new Set(posts.map(p => p.platform))).sort();
@@ -94,6 +100,14 @@ export default function Posts() {
             {platforms.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={formatFilter} onValueChange={setFormatFilter}>
+          <SelectTrigger className="w-32 h-10 text-sm"><SelectValue placeholder="Formato" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Feed + Stories</SelectItem>
+            <SelectItem value="feed">Feed</SelectItem>
+            <SelectItem value="stories">Stories</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={sortBy} onValueChange={v => setSortBy(v as "date" | "score")}>
           <SelectTrigger className="w-36 h-10 text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -114,65 +128,80 @@ export default function Posts() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map(post => (
-            <div key={post.id} className="bg-card border border-border rounded-xl p-5 card-glow">
-              <div className="flex items-start gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                    <PlatformBadge platform={post.platform} />
-                    <ContentTypeBadge contentType={(post as any).content_type ?? null} />
-                    {post.post_creators?.map(pc => pc.creator && (
-                      <Link key={pc.creator.id} to={`/creators/${pc.creator.id}`} className="text-xs text-muted-foreground hover:text-primary transition-colors">
-                        {pc.creator.name}
-                      </Link>
-                    ))}
-                    {post.posted_at && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1 ml-auto">
-                        <CalendarDays className="w-3 h-3" />
-                        {format(new Date(post.posted_at), "dd/MM/yyyy", { locale: ptBR })}
-                      </span>
-                    )}
+          {filtered.map(post => {
+            const isStories = (post.format || "feed") === "stories";
+            return (
+              <div key={post.id} className="bg-card border border-border rounded-xl p-5 card-glow">
+                <div className="flex items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                      <PlatformBadge platform={post.platform} />
+                      <FormatBadge format={post.format || "feed"} />
+                      {!isStories && <ContentTypeBadge contentType={(post as any).content_type ?? null} />}
+                      {post.post_creators?.map(pc => pc.creator && (
+                        <Link key={pc.creator.id} to={`/creators/${pc.creator.id}`} className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                          {pc.creator.name}
+                        </Link>
+                      ))}
+                      {post.posted_at && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1 ml-auto">
+                          <CalendarDays className="w-3 h-3" />
+                          {format(new Date(post.posted_at), "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-medium truncate text-sm">{post.title || post.url}</p>
+                    <a href={post.url} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-0.5 truncate">
+                      <ExternalLink className="w-3 h-3 flex-shrink-0" /> {post.url}
+                    </a>
+                    <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                      {isStories ? (
+                        <>
+                          <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{(post.views_pico ?? 0).toLocaleString()} pico</span>
+                          <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" />{(post.interactions ?? 0).toLocaleString()}</span>
+                          <span className="flex items-center gap-1"><Repeat2 className="w-3 h-3" />{(post.forwards ?? 0).toLocaleString()}</span>
+                          <span className="flex items-center gap-1"><MousePointerClick className="w-3 h-3" />{(post.cta_clicks ?? 0).toLocaleString()}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{post.likes.toLocaleString()}</span>
+                          <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" />{post.comments.toLocaleString()}</span>
+                          <span className="flex items-center gap-1"><Share2 className="w-3 h-3" />{post.shares.toLocaleString()}</span>
+                          <span className="flex items-center gap-1"><Bookmark className="w-3 h-3" />{post.saves.toLocaleString()}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <p className="font-medium truncate text-sm">{post.title || post.url}</p>
-                  <a href={post.url} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-0.5 truncate">
-                    <ExternalLink className="w-3 h-3 flex-shrink-0" /> {post.url}
-                  </a>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{post.likes.toLocaleString()}</span>
-                    <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" />{post.comments.toLocaleString()}</span>
-                    <span className="flex items-center gap-1"><Share2 className="w-3 h-3" />{post.shares.toLocaleString()}</span>
-                    <span className="flex items-center gap-1"><Bookmark className="w-3 h-3" />{post.saves.toLocaleString()}</span>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                  <div className="text-right">
-                    <p className="text-2xl font-bold gradient-text">{post.score.toFixed(0)}</p>
-                    <p className="text-xs text-muted-foreground">pontos</p>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-primary" onClick={() => navigate(`/posts/${post.id}/edit`)}>
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="w-8 h-8 text-destructive hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent className="bg-card border-border">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Remover post?</AlertDialogTitle>
-                          <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deletePost(post.id)} className="bg-destructive text-destructive-foreground">Remover</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                    <div className="text-right">
+                      <p className="text-2xl font-bold gradient-text">{post.score.toFixed(0)}</p>
+                      <p className="text-xs text-muted-foreground">pontos</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-primary" onClick={() => navigate(`/posts/${post.id}/edit`)}>
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="w-8 h-8 text-destructive hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-card border-border">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remover post?</AlertDialogTitle>
+                            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deletePost(post.id)} className="bg-destructive text-destructive-foreground">Remover</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
