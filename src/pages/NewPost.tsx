@@ -48,14 +48,16 @@ export default function NewPost() {
 
   useEffect(() => {
     async function load() {
-      const [{ data: m }, { data: w }, { data: mp }] = await Promise.all([
+      const [{ data: m }, { data: w }, { data: mp }, { data: sw }] = await Promise.all([
         supabase.from("members").select("*").order("name"),
         supabase.from("engagement_weights").select("*").limit(1).single(),
         supabase.from("content_type_multipliers").select("*").limit(1).single(),
+        (supabase as any).from("stories_weights").select("*").limit(1).single(),
       ]);
       if (m) setCreators(m);
       if (w) setWeights(w);
       if (mp) setMultipliers(mp as ContentTypeMultipliers);
+      if (sw) setStoriesWeights(sw as StoriesWeights);
     }
     load();
   }, []);
