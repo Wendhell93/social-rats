@@ -170,7 +170,7 @@ export default function Settings() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <BookImage className="w-4 h-4 text-violet-400" />
+                <BookImage className="w-4 h-4 text-primary" />
                 <span>Pesos dos Stories</span>
               </CardTitle>
               <CardDescription>
@@ -180,8 +180,8 @@ export default function Settings() {
             <CardContent className="space-y-4">
               {storiesWeightFields.map(({ key, label, icon: Icon, description }) => (
                 <div key={key} className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-5 h-5 text-violet-400" />
+                  <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-5 h-5 text-accent-foreground" />
                   </div>
                   <div className="flex-1">
                     <Label className="text-sm font-medium">{label}</Label>
