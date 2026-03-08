@@ -75,15 +75,17 @@ export default function Settings() {
     if (!weights || !multipliers) return;
     setSaving(true);
 
-    const ops: Promise<any>[] = [
-      supabase.from("engagement_weights").update({ ...form, updated_at: new Date().toISOString() }).eq("id", weights.id),
-      supabase.from("content_type_multipliers").update({ ...multForm, updated_at: new Date().toISOString() }).eq("id", multipliers.id),
+    const promises: Promise<{ error: any }>[] = [
+      supabase.from("engagement_weights").update({ ...form, updated_at: new Date().toISOString() }).eq("id", weights.id) as unknown as Promise<{ error: any }>,
+      supabase.from("content_type_multipliers").update({ ...multForm, updated_at: new Date().toISOString() }).eq("id", multipliers.id) as unknown as Promise<{ error: any }>,
     ];
     if (storiesW) {
-      ops.push((supabase as any).from("stories_weights").update({ ...storiesForm, updated_at: new Date().toISOString() }).eq("id", storiesW.id));
+      promises.push(
+        (supabase as any).from("stories_weights").update({ ...storiesForm, updated_at: new Date().toISOString() }).eq("id", storiesW.id) as Promise<{ error: any }>
+      );
     }
 
-    const results = await Promise.all(ops);
+    const results = await Promise.all(promises);
     const anyError = results.find(r => r.error);
     if (anyError) {
       toast({ title: "Erro ao salvar", description: anyError.error?.message, variant: "destructive" });
