@@ -103,7 +103,7 @@ export default function NewPost() {
     setSaving(true);
     let score = 0;
     if (postFormat === "stories") {
-      score = calcScoreStories(storiesMetrics);
+      score = calcScoreStories(storiesMetrics, storiesWeights ?? undefined);
     } else {
       const mult = getMultiplier(contentType, multipliers);
       score = weights ? calcScore(metrics, weights, mult) : 0;

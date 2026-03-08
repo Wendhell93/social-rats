@@ -88,7 +88,7 @@ export default function EditPost() {
 
     let score = 0;
     if (postFormat === "stories") {
-      score = calcScoreStories(storiesMetrics);
+      score = calcScoreStories(storiesMetrics, storiesWeights ?? undefined);
     } else {
       const mult = getMultiplier(contentType, multipliers);
       score = weights ? calcScore(metrics, weights, mult) : post.score;
