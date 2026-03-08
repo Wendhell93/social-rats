@@ -127,7 +127,11 @@ export type Database = {
           comments: number
           content_type: string | null
           created_at: string
+          cta_clicks: number
+          format: string
+          forwards: number
           id: string
+          interactions: number
           likes: number
           member_id: string | null
           platform: string
@@ -138,12 +142,17 @@ export type Database = {
           thumbnail_url: string | null
           title: string | null
           url: string
+          views_pico: number
         }
         Insert: {
           comments?: number
           content_type?: string | null
           created_at?: string
+          cta_clicks?: number
+          format?: string
+          forwards?: number
           id?: string
+          interactions?: number
           likes?: number
           member_id?: string | null
           platform: string
@@ -154,12 +163,17 @@ export type Database = {
           thumbnail_url?: string | null
           title?: string | null
           url: string
+          views_pico?: number
         }
         Update: {
           comments?: number
           content_type?: string | null
           created_at?: string
+          cta_clicks?: number
+          format?: string
+          forwards?: number
           id?: string
+          interactions?: number
           likes?: number
           member_id?: string | null
           platform?: string
@@ -170,6 +184,7 @@ export type Database = {
           thumbnail_url?: string | null
           title?: string | null
           url?: string
+          views_pico?: number
         }
         Relationships: [
           {

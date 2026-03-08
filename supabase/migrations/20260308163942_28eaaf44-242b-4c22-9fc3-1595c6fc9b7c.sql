@@ -1,0 +1,7 @@
+
+ALTER TABLE public.posts
+  ADD COLUMN IF NOT EXISTS format text NOT NULL DEFAULT 'feed',
+  ADD COLUMN IF NOT EXISTS views_pico integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS interactions integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS forwards integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS cta_clicks integer NOT NULL DEFAULT 0;
