@@ -164,7 +164,7 @@ export default function EditPost() {
               ))}
             </div>
             {postFormat === "stories" && (
-              <div className="mt-3 flex items-start gap-2 rounded-lg bg-violet-500/10 border border-violet-500/20 px-3 py-2.5 text-xs text-violet-400">
+              <div className="mt-3 flex items-start gap-2 rounded-lg bg-primary/10 border border-primary/20 px-3 py-2.5 text-xs text-primary">
                 <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
                 <span>
                   <strong>Regras Stories:</strong> views_pico = story com mais views do dia; máx. 10 stories elegíveis por criador/dia; fórmula fixa sem multiplicador de tipo.
