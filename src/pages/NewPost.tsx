@@ -146,7 +146,7 @@ export default function NewPost() {
 
   const mult = getMultiplier(contentType, multipliers);
   const previewScore = postFormat === "stories"
-    ? calcScoreStories(storiesMetrics)
+    ? calcScoreStories(storiesMetrics, storiesWeights ?? undefined)
     : (weights ? calcScore(metrics, weights, mult) : 0);
 
   const filteredCreators = creators.filter(c =>

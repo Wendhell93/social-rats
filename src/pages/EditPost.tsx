@@ -118,7 +118,7 @@ export default function EditPost() {
 
   const mult = getMultiplier(contentType, multipliers);
   const previewScore = postFormat === "stories"
-    ? calcScoreStories(storiesMetrics)
+    ? calcScoreStories(storiesMetrics, storiesWeights ?? undefined)
     : (weights ? calcScore(metrics, weights, mult) : 0);
 
   const filteredCreators = allCreators.filter(c =>
