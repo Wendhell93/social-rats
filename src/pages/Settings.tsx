@@ -138,7 +138,7 @@ export default function Settings() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <Layers className="w-4 h-4 text-emerald-400" />
+                <Layers className="w-4 h-4 text-primary" />
                 <span>Pesos do Feed</span>
               </CardTitle>
               <CardDescription>Cada interação valerá X pontos no cálculo do score base.</CardDescription>
