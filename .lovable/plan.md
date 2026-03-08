@@ -1,95 +1,64 @@
 
-## O que o documento define
+## Análise completa do app — Sugestões de melhoria
 
-**Dois tipos de publicação** (obrigatório declarar):
-- **Feed** — foto, carrossel ou vídeo no perfil. Usa a fórmula atual: (curtidas×1 + comentários×3 + compartilhamentos×5 + salvamentos×2) × multiplicador de tipo
-- **Stories** — conteúdo efêmero. Fórmula diferente com métricas diferentes
-
-**Fórmula Stories:**
-```
-Score = (views_pico × 0.25) + (interações × 3) + (encaminhamentos × 5) + (cliques_no_link × 10)
-```
-
-**4 regras especiais dos Stories:**
-- R1: `views_pico` = só o story com mais views do dia (não soma todos)
-- R2: Máximo 10 stories por criador por dia (os demais não pontuam)
-- R3: Interações + encaminhamentos + cliques somam todos os stories elegíveis (até 10)
-- R4: CTA (cliques no link) tem peso ×10, o maior de todos
-
-**Métricas Stories vs Feed:**
-
-| Stories | Feed |
-|---|---|
-| views_pico (×0.25) | curtidas (×1) |
-| interações (×3) | comentários (×3) |
-| encaminhamentos (×5) | compartilhamentos (×5) |
-| cliques_no_link (×10) | salvamentos (×2) |
-
-**Importante:** Stories NÃO têm multiplicador por tipo de conteúdo — a fórmula é fixa. Feed mantém o multiplicador configurável.
+Analisei todas as páginas: Dashboard, Ranking, Posts, Criadores, Perfil do Criador, Novo Post e Editar Post. Aqui estão as principais oportunidades organizadas por impacto.
 
 ---
 
-## O que precisa mudar
+### UX / Usabilidade
 
-### 1. Banco de dados (migração)
-Adicionar 4 colunas à tabela `posts`:
-```sql
-ALTER TABLE posts ADD COLUMN format text DEFAULT 'feed'; -- 'feed' | 'stories'
-ALTER TABLE posts ADD COLUMN views_pico integer DEFAULT 0;
-ALTER TABLE posts ADD COLUMN interactions integer DEFAULT 0;  -- enquetes, quizzes, etc
-ALTER TABLE posts ADD COLUMN forwards integer DEFAULT 0;     -- encaminhamentos
-ALTER TABLE posts ADD COLUMN cta_clicks integer DEFAULT 0;   -- cliques no link
-```
+**1. Filtro de período na aba Posts**
+Hoje o filtro de período existe no Dashboard e Ranking, mas a listagem de Posts não tem filtro nenhum (apenas busca por texto). Com muitos posts, fica difícil visualizar por período.
 
-### 2. `src/lib/types.ts`
-- Adicionar campos novos ao tipo `Post`: `format`, `views_pico`, `interactions`, `forwards`, `cta_clicks`
-- Adicionar tipo `PostFormat = "feed" | "stories"`
-- Criar função `calcScoreStories({ views_pico, interactions, forwards, cta_clicks }): number`
-- Adaptar `calcScore` para despachar para a função correta com base no `format`
+**2. Ranking mostra todos os criadores, mesmo com 0 pontos**
+O ranking exibe criadores sem nenhum post no período, o que polui a lista. Deveria ocultar quem não tem pontos ou mostrar separado.
 
-### 3. `src/pages/NewPost.tsx` e `src/pages/EditPost.tsx`
-- Adicionar seletor **Feed / Stories** no início do formulário (obrigatório)
-- Quando **Feed**: mostrar métricas atuais (curtidas, comentários, compartilhamentos, salvamentos) + multiplicador de tipo de conteúdo
-- Quando **Stories**: mostrar métricas stories (views_pico, interações, encaminhamentos, cliques_no_link) + aviso das regras R1/R2 + ocultar seletor de tipo de conteúdo
-- Score preview atualiza em tempo real conforme o formato
-- Validação de limite de 10 stories por criador por dia (bloqueia o save com mensagem de erro)
+**3. EditPost não tem campo de data de publicação**
+O formulário de Novo Post tem campo de data, mas o de Edição não. Se a data foi esquecida ou errada, não dá para corrigir.
 
-### 4. `src/pages/Posts.tsx`
-- Badge de formato (Feed / Stories) visível no card, ao lado do badge de plataforma
-- Exibir as métricas corretas conforme o formato do post
-- Filtro por formato (Todos / Feed / Stories)
+**4. Exclusão de criador sem confirmação**
+O botão "✕" na lista de criadores não tem nenhum `AlertDialog` de confirmação — diferente da exclusão de posts que tem. Pode causar exclusões acidentais.
 
-### 5. `src/components/ContentTypePicker.tsx`
-- Ocultar (ou desabilitar) quando o formato selecionado for **Stories**, já que Stories não aplica multiplicador por tipo
+**5. Criadores sem score visível na listagem**
+Os cards de criadores não mostram o score total acumulado. O usuário precisa entrar no perfil para ver. Exibir o score diretamente no card daria uma visão imediata.
 
 ---
 
-## Diagrama de fluxo do score
+### Funcionalidade
+
+**6. Fórmula de score visível**
+As configurações têm os pesos, mas em nenhum lugar do app é explicado como o score é calculado. Um tooltip ou linha explicativa em "Métricas" (ex: "Score = 1×curtidas + 3×comentários + 5×compartilhamentos + 2×salvamentos") ajudaria muito.
+
+**7. Página de Settings — configurações básicas do app**
+A rota `/settings` existe mas não foi analisada. Se estiver vazia ou só com pesos, poderia ganhar o título do ranking, nome da equipe, etc.
+
+**8. Permalink do criador no ranking**
+Os nomes no ranking não são clicáveis para ir ao perfil. Só o Dashboard tem esse link.
+
+**9. Ordenação e filtros na listagem de Posts**
+Além da busca por texto, adicionar ordenação (mais recente, maior score, plataforma) tornaria o gerenciamento muito mais prático.
+
+---
+
+### Proposta de implementação por prioridade
 
 ```
-Cadastrar post
-    │
-    ├── Formato: FEED
-    │       ├── Métricas: curtidas, comentários, compartilhamentos, salvamentos
-    │       ├── Tipo: Técnico / Meme / Anúncio / Nenhum (multiplier)
-    │       └── Score = (c×w1 + co×w2 + cp×w3 + s×w4) × multiplier
-    │
-    └── Formato: STORIES
-            ├── Métricas: views_pico, interações, encaminhamentos, cliques_link
-            ├── Sem multiplicador por tipo
-            ├── Validação: ≤10 stories por criador por dia
-            └── Score = (views×0.25) + (int×3) + (enc×5) + (cta×10)
+ALTA PRIORIDADE (impacto imediato)
+├── Confirmação ao excluir criador
+├── Campo de data na edição de post
+├── Ranking clicável para perfil do criador
+└── Ocultar criadores com 0 pontos no ranking (ou destacar)
+
+MÉDIA PRIORIDADE (melhora produtividade)
+├── Score visível no card de criador
+├── Tooltip da fórmula de score em Novo/Editar Post
+└── Ordenação na listagem de Posts
+
+BAIXA PRIORIDADE (refinamento)
+└── Filtro de período na listagem de Posts
 ```
 
 ---
 
-## Arquivos a modificar
-
-| Arquivo | O que muda |
-|---|---|
-| `supabase/migrations/` | Nova migração: 5 colunas na tabela `posts` |
-| `src/lib/types.ts` | Novo tipo `PostFormat`, novos campos em `Post`, nova função `calcScoreStories` |
-| `src/pages/NewPost.tsx` | Seletor Feed/Stories, métricas condicionais, validação dos 10 stories |
-| `src/pages/EditPost.tsx` | Seletor Feed/Stories (pré-preenchido), métricas condicionais |
-| `src/pages/Posts.tsx` | Badge de formato, filtro por formato, exibição de métricas corretas |
-| `src/components/ContentTypePicker.tsx` | Ocultar quando formato = stories |
+**O que você quer implementar?**
+Posso fazer tudo de uma vez ou em partes — me diga o que tem mais urgência ou aprove o plano completo.

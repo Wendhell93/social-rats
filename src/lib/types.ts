@@ -9,6 +9,8 @@ export type Creator = {
 // Alias for backward compat
 export type Member = Creator;
 
+export type PostFormat = "feed" | "stories";
+
 export type Post = {
   id: string;
   member_id: string | null;
@@ -24,6 +26,12 @@ export type Post = {
   posted_at: string | null;
   created_at: string;
   content_type: string | null;
+  // Stories / Feed format
+  format: PostFormat;
+  views_pico: number;
+  interactions: number;
+  forwards: number;
+  cta_clicks: number;
   member?: Creator;
   post_creators?: { creator: Creator }[];
 };
@@ -90,6 +98,24 @@ export function calcScore(
     metrics.shares * weights.shares_weight +
     metrics.saves * weights.saves_weight;
   return base * multiplier;
+}
+
+/**
+ * Stories score formula (fixed weights, no content-type multiplier):
+ * Score = (views_pico × 0.25) + (interactions × 3) + (forwards × 5) + (cta_clicks × 10)
+ */
+export function calcScoreStories(metrics: {
+  views_pico: number;
+  interactions: number;
+  forwards: number;
+  cta_clicks: number;
+}): number {
+  return (
+    metrics.views_pico * 0.25 +
+    metrics.interactions * 3 +
+    metrics.forwards * 5 +
+    metrics.cta_clicks * 10
+  );
 }
 
 export function getMultiplier(
