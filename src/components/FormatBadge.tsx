@@ -13,8 +13,8 @@ export function FormatBadge({ format, className }: FormatBadgeProps) {
       className={cn(
         "inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-xs font-medium",
         isStories
-          ? "bg-violet-500/10 border-violet-500/20 text-violet-400"
-          : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+          ? "bg-primary/10 border-primary/20 text-primary"
+          : "bg-secondary/50 border-border text-secondary-foreground",
         className
       )}
     >
