@@ -33,6 +33,7 @@ export default function NewPost() {
   const [creators, setCreators] = useState<Creator[]>([]);
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
   const [multipliers, setMultipliers] = useState<ContentTypeMultipliers | null>(null);
+  const [storiesWeights, setStoriesWeights] = useState<StoriesWeights | null>(null);
   const [saving, setSaving] = useState(false);
   // Feed metrics
   const [metrics, setMetrics] = useState({ likes: 0, comments: 0, shares: 0, saves: 0 });

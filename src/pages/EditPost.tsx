@@ -33,6 +33,7 @@ export default function EditPost() {
   const [selectedCreators, setSelectedCreators] = useState<Creator[]>([]);
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
   const [multipliers, setMultipliers] = useState<ContentTypeMultipliers | null>(null);
+  const [storiesWeights, setStoriesWeights] = useState<StoriesWeights | null>(null);
   const [postFormat, setPostFormat] = useState<PostFormat>("feed");
   const [metrics, setMetrics] = useState({ likes: 0, comments: 0, shares: 0, saves: 0 });
   const [storiesMetrics, setStoriesMetrics] = useState({ views_pico: 0, interactions: 0, forwards: 0, cta_clicks: 0 });
