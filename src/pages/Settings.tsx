@@ -248,7 +248,7 @@ export default function Settings() {
                 <div className="space-y-3 w-full">
                   <div>
                     <p className="text-sm font-medium text-accent-foreground flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-emerald-400" /> Fórmula Feed
+                      <Layers className="w-3.5 h-3.5 text-primary" /> Fórmula Feed
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Score = ((curtidas × {form.likes_weight}) + (comentários × {form.comments_weight}) + (compartilhamentos × {form.shares_weight}) + (salvamentos × {form.saves_weight})) × tipo
@@ -259,7 +259,7 @@ export default function Settings() {
                   </div>
                   <div className="border-t border-border pt-3">
                     <p className="text-sm font-medium text-accent-foreground flex items-center gap-1.5">
-                      <BookImage className="w-3.5 h-3.5 text-violet-400" /> Fórmula Stories
+                      <BookImage className="w-3.5 h-3.5 text-primary" /> Fórmula Stories
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Score = (views_pico × {storiesForm.views_pico_weight}) + (interações × {storiesForm.interactions_weight}) + (encaminhamentos × {storiesForm.forwards_weight}) + (cliques × {storiesForm.cta_clicks_weight})
