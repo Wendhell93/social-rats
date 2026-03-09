@@ -103,7 +103,7 @@ function PrizeCard({
   return (
     <Card className="flex flex-col overflow-hidden border-border/60">
       {/* Image */}
-      <div className="relative aspect-video bg-muted flex items-center justify-center overflow-hidden">
+      <div className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {prize.image_url ? (
           <img
             src={prize.image_url}
