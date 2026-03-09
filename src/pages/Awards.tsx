@@ -598,19 +598,19 @@ export default function Awards() {
                     : null;
                   return progress !== null ? (
                     <div>
-                      <div className="h-1.5 w-full bg-primary/10">
+                      <div className="h-3 w-full bg-primary/10">
                         <div
                           className="h-full transition-all duration-700"
                           style={{
                             width: `${progress}%`,
-                            background: "linear-gradient(90deg, hsl(217 91% 60%), hsl(199 95% 55%))",
-                            boxShadow: "0 0 8px hsl(217 91% 60% / 0.7)",
+                            background: "linear-gradient(90deg, hsl(217 91% 55%), hsl(199 95% 60%))",
+                            boxShadow: "0 0 14px hsl(217 91% 60% / 0.9), 0 0 4px hsl(199 95% 65% / 0.6)",
                           }}
                         />
                       </div>
                       {daysLeft !== null && (
-                        <div className="px-6 pt-2 pb-0">
-                          <span className="text-xs font-medium" style={{ color: "hsl(217 91% 65%)" }}>
+                        <div className="px-6 pt-2.5 pb-0">
+                          <span className="text-sm font-bold tracking-wide" style={{ color: "hsl(217 91% 70%)", textShadow: "0 0 8px hsl(217 91% 60% / 0.5)" }}>
                             {daysLeft === 0 ? "Último dia! 🔥" : `Faltam ${daysLeft} dia${daysLeft !== 1 ? "s" : ""}`}
                           </span>
                         </div>
