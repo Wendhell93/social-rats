@@ -30,6 +30,7 @@ const App = () => (
           <Route path="/posts/new" element={<NewPost />} />
           <Route path="/posts/:id/edit" element={<EditPost />} />
           <Route path="/ranking" element={<Ranking />} />
+          <Route path="/awards" element={<Awards />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

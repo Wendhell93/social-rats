@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, FileText, Trophy, Settings } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Trophy, Gift, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PeriodSelector } from "@/components/PeriodSelector";
 
