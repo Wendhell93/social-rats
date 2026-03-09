@@ -61,7 +61,7 @@ interface AwardPrize {
 
 interface PostCreatorRow {
   creator_id: string;
-  post: { id: string; score: number; posted_at: string | null } | null;
+  post: { id: string; score: number; created_at: string; posted_at: string | null } | null;
 }
 
 interface RankingEntry {
