@@ -499,13 +499,11 @@ export default function Awards() {
     load();
   }, []);
 
-  // Compute live ranking filtered by award period
+  // Compute live ranking filtered by award period — uses created_at to match Ranking page
   function computeLiveRanking(award: Award): RankingEntry[] {
     const filtered = postCreators.filter((pc) => {
       if (!pc.post) return false;
-      const dateStr = pc.post.posted_at;
-      if (!dateStr) return false;
-      const date = parseISO(dateStr);
+      const date = parseISO(pc.post.created_at);
       if (award.start_date && award.end_date) {
         return isWithinInterval(date, {
           start: startOfDay(parseISO(award.start_date)),
