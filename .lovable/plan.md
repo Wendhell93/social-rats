@@ -1,142 +1,64 @@
 
-## Understanding the request
+## Análise completa do app — Sugestões de melhoria
 
-The user wants a new **Premiações** (Awards) page with:
-1. **Active challenge** — highlighted at the top: challenge name, period, prizes per placement (1st, 2nd, 3rd…) each with an image and description
-2. **Live ranking** — "who would win right now" using existing ranking data
-3. **Past awards history** — archived completed challenges below
+Analisei todas as páginas: Dashboard, Ranking, Posts, Criadores, Perfil do Criador, Novo Post e Editar Post. Aqui estão as principais oportunidades organizadas por impacto.
 
 ---
 
-## Database design
+### UX / Usabilidade
 
-### Table: `awards`
-Represents a challenge/competition (active or past):
-```sql
-CREATE TABLE public.awards (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  title text NOT NULL,
-  description text,
-  start_date date,
-  end_date date,
-  is_active boolean NOT NULL DEFAULT false,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-```
+**1. Filtro de período na aba Posts**
+Hoje o filtro de período existe no Dashboard e Ranking, mas a listagem de Posts não tem filtro nenhum (apenas busca por texto). Com muitos posts, fica difícil visualizar por período.
 
-### Table: `award_prizes`
-Each row = one placement prize within an award:
-```sql
-CREATE TABLE public.award_prizes (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  award_id uuid NOT NULL REFERENCES public.awards(id) ON DELETE CASCADE,
-  placement integer NOT NULL,  -- 1 = 1st, 2 = 2nd, etc.
-  title text NOT NULL,          -- "1º lugar"
-  description text,
-  image_url text,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-```
+**2. Ranking mostra todos os criadores, mesmo com 0 pontos**
+O ranking exibe criadores sem nenhum post no período, o que polui a lista. Deveria ocultar quem não tem pontos ou mostrar separado.
 
-RLS: public SELECT/INSERT/UPDATE/DELETE for both tables (consistent with existing tables).
+**3. EditPost não tem campo de data de publicação**
+O formulário de Novo Post tem campo de data, mas o de Edição não. Se a data foi esquecida ou errada, não dá para corrigir.
 
-Storage: A new bucket `award-images` (public) for prize images.
+**4. Exclusão de criador sem confirmação**
+O botão "✕" na lista de criadores não tem nenhum `AlertDialog` de confirmação — diferente da exclusão de posts que tem. Pode causar exclusões acidentais.
+
+**5. Criadores sem score visível na listagem**
+Os cards de criadores não mostram o score total acumulado. O usuário precisa entrar no perfil para ver. Exibir o score diretamente no card daria uma visão imediata.
 
 ---
 
-## Pages and components
+### Funcionalidade
 
-### New route: `/awards`
-New nav item in Layout: **Premiações** with `Gift` icon from lucide-react, between Ranking and Settings.
+**6. Fórmula de score visível**
+As configurações têm os pesos, mas em nenhum lugar do app é explicado como o score é calculado. Um tooltip ou linha explicativa em "Métricas" (ex: "Score = 1×curtidas + 3×comentários + 5×compartilhamentos + 2×salvamentos") ajudaria muito.
 
-### `src/pages/Awards.tsx`
-Two sections:
+**7. Página de Settings — configurações básicas do app**
+A rota `/settings` existe mas não foi analisada. Se estiver vazia ou só com pesos, poderia ganhar o título do ranking, nome da equipe, etc.
 
-**Section 1 — Active Challenge (hero card)**
-- Fetches the single `is_active = true` award
-- Shows title, description, date range
-- For each prize (ordered by `placement`): placement badge, image, title, description
-- "Quem levaria agora" sub-section: re-uses the ranking logic (same as Ranking.tsx) filtered by the award's `start_date`→`end_date`, showing top N creators (N = number of prizes configured), with avatar + name + score matched to the corresponding prize card
-- Admin controls: button to open a modal to create/edit the active challenge and its prizes
+**8. Permalink do criador no ranking**
+Os nomes no ranking não são clicáveis para ir ao perfil. Só o Dashboard tem esse link.
 
-**Section 2 — History**
-- All `is_active = false` awards, sorted by `end_date` desc
-- Collapsed cards showing the award name, period, and who won each placement (stored as completed data)
-
-### Winner storage
-When an award is marked as completed (is_active set to false), the system should record the actual winners. Add a `winner_member_id` column to `award_prizes`:
-```sql
-ALTER TABLE public.award_prizes ADD COLUMN winner_member_id uuid REFERENCES public.members(id) ON DELETE SET NULL;
-```
-When admin closes the competition, they assign winners from the current ranking snapshot.
+**9. Ordenação e filtros na listagem de Posts**
+Além da busca por texto, adicionar ordenação (mais recente, maior score, plataforma) tornaria o gerenciamento muito mais prático.
 
 ---
 
-## Admin modal flow
-
-A single dialog (`AwardFormDialog`) with two tabs:
-1. **Desafio** — title, description, start_date, end_date
-2. **Prêmios** — dynamic list: add/remove placements, each with title + description + image upload (to `award-images` bucket)
-
-"Encerrar competição" button: sets `is_active = false` and saves the current ranking snapshot as `winner_member_id` on each prize automatically.
-
----
-
-## "Who would win now" logic
-
-Reuse the same ranking computation from `Ranking.tsx` but:
-- Filter posts by `posted_at` within the award's `start_date` → `end_date`
-- Take top N results where N = number of prizes
-- Display each creator next to their corresponding prize card
-
----
-
-## Files to create/modify
-
-| File | Action |
-|---|---|
-| `supabase/migrations/…_awards.sql` | Create `awards`, `award_prizes` tables + RLS + storage bucket |
-| `src/pages/Awards.tsx` | New page (main display + admin controls) |
-| `src/App.tsx` | Add `/awards` route |
-| `src/components/Layout.tsx` | Add "Premiações" nav item with `Gift` icon |
-
----
-
-## UI layout sketch
+### Proposta de implementação por prioridade
 
 ```
-/awards
-┌─────────────────────────────────────────────┐
-│  🏆 DESAFIO ATIVO          [Editar] [Encerrar]│
-│  "Nome do Desafio"  •  01/03 – 31/03/2026   │
-│  Descrição do desafio...                    │
-│                                             │
-│  PRÊMIOS                                    │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐    │
-│  │🥇 1º Lugar│ │🥈 2º Lugar│ │🥉 3º Lugar│   │
-│  │[imagem]  │ │[imagem]  │ │[imagem]  │    │
-│  │descrição │ │descrição │ │descrição │    │
-│  └──────────┘ └──────────┘ └──────────┘    │
-│                                             │
-│  QUEM LEVARIA AGORA                        │
-│  🥇 Avatar Nome  ──── 1.240 pts            │
-│  🥈 Avatar Nome  ────   980 pts            │
-│  🥉 Avatar Nome  ────   750 pts            │
-└─────────────────────────────────────────────┘
+ALTA PRIORIDADE (impacto imediato)
+├── Confirmação ao excluir criador
+├── Campo de data na edição de post
+├── Ranking clicável para perfil do criador
+└── Ocultar criadores com 0 pontos no ranking (ou destacar)
 
-┌─────────────────────────────────────────────┐
-│  HISTÓRICO DE PREMIAÇÕES                    │
-│  ▼ Desafio Fevereiro 2026  01/02–28/02      │
-│    🥇 João  🥈 Maria  🥉 Pedro              │
-│  ▼ Desafio Janeiro 2026    01/01–31/01      │
-│    🥇 Ana   🥈 Carlos ...                  │
-└─────────────────────────────────────────────┘
+MÉDIA PRIORIDADE (melhora produtividade)
+├── Score visível no card de criador
+├── Tooltip da fórmula de score em Novo/Editar Post
+└── Ordenação na listagem de Posts
+
+BAIXA PRIORIDADE (refinamento)
+└── Filtro de período na listagem de Posts
 ```
 
 ---
 
-## Summary of changes
-
-- **2 new DB tables** + 1 storage bucket
-- **1 new page** (`Awards.tsx`) with admin CRUD inline (no separate settings page needed)
-- **2 small edits** (`App.tsx` + `Layout.tsx`) to wire up the new route and nav item
+**O que você quer implementar?**
+Posso fazer tudo de uma vez ou em partes — me diga o que tem mais urgência ou aprove o plano completo.

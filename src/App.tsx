@@ -10,6 +10,7 @@ import Posts from "./pages/Posts";
 import NewPost from "./pages/NewPost";
 import EditPost from "./pages/EditPost";
 import Ranking from "./pages/Ranking";
+import Awards from "./pages/Awards";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/posts/new" element={<NewPost />} />
           <Route path="/posts/:id/edit" element={<EditPost />} />
           <Route path="/ranking" element={<Ranking />} />
+          <Route path="/awards" element={<Awards />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
