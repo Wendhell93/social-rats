@@ -61,7 +61,7 @@ interface AwardPrize {
 
 interface PostCreatorRow {
   creator_id: string;
-  post: { id: string; score: number; posted_at: string | null } | null;
+  post: { id: string; score: number; created_at: string; posted_at: string | null } | null;
 }
 
 interface RankingEntry {
@@ -470,7 +470,7 @@ export default function Awards() {
       supabase.from("awards").select("*").order("created_at", { ascending: false }),
       supabase.from("award_prizes").select("*, winner:members!award_prizes_winner_member_id_fkey(*)").order("placement"),
       supabase.from("members").select("*"),
-      supabase.from("post_creators").select("creator_id, post:posts(id, score, posted_at)"),
+      supabase.from("post_creators").select("creator_id, post:posts(id, score, created_at, posted_at)"),
     ]);
 
     if (awards) {
@@ -499,13 +499,11 @@ export default function Awards() {
     load();
   }, []);
 
-  // Compute live ranking filtered by award period
+  // Compute live ranking filtered by award period — uses created_at to match Ranking page
   function computeLiveRanking(award: Award): RankingEntry[] {
     const filtered = postCreators.filter((pc) => {
       if (!pc.post) return false;
-      const dateStr = pc.post.posted_at;
-      if (!dateStr) return false;
-      const date = parseISO(dateStr);
+      const date = parseISO(pc.post.created_at);
       if (award.start_date && award.end_date) {
         return isWithinInterval(date, {
           start: startOfDay(parseISO(award.start_date)),
