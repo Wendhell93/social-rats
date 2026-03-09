@@ -14,6 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      award_prizes: {
+        Row: {
+          award_id: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          placement: number
+          title: string
+          winner_member_id: string | null
+        }
+        Insert: {
+          award_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          placement: number
+          title: string
+          winner_member_id?: string | null
+        }
+        Update: {
+          award_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          placement?: number
+          title?: string
+          winner_member_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "award_prizes_award_id_fkey"
+            columns: ["award_id"]
+            isOneToOne: false
+            referencedRelation: "awards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "award_prizes_winner_member_id_fkey"
+            columns: ["winner_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      awards: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean
+          start_date: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          start_date?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          start_date?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       content_type_multipliers: {
         Row: {
           announcement: number
