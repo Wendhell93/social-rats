@@ -470,7 +470,7 @@ export default function Awards() {
       supabase.from("awards").select("*").order("created_at", { ascending: false }),
       supabase.from("award_prizes").select("*, winner:members!award_prizes_winner_member_id_fkey(*)").order("placement"),
       supabase.from("members").select("*"),
-      supabase.from("post_creators").select("creator_id, post:posts(id, score, posted_at)"),
+      supabase.from("post_creators").select("creator_id, post:posts(id, score, created_at, posted_at)"),
     ]);
 
     if (awards) {
