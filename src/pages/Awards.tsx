@@ -584,7 +584,40 @@ export default function Awards() {
           {/* ── Active Challenge ─────────────────────────────────────────── */}
           {activeAward ? (
             <section className="mb-10">
-              <Card className="border-primary/30 bg-primary/5">
+              <Card className="border-primary/30 bg-primary/5 overflow-hidden">
+                {/* Progress bar */}
+                {(() => {
+                  const now = new Date();
+                  const start = activeAward.start_date ? new Date(activeAward.start_date) : null;
+                  const end = activeAward.end_date ? new Date(activeAward.end_date + "T23:59:59") : null;
+                  const progress = start && end
+                    ? Math.min(100, Math.max(0, ((now.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100))
+                    : null;
+                  const daysLeft = end
+                    ? Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+                    : null;
+                  return progress !== null ? (
+                    <div>
+                      <div className="h-1.5 w-full bg-primary/10">
+                        <div
+                          className="h-full transition-all duration-700"
+                          style={{
+                            width: `${progress}%`,
+                            background: "linear-gradient(90deg, hsl(217 91% 60%), hsl(199 95% 55%))",
+                            boxShadow: "0 0 8px hsl(217 91% 60% / 0.7)",
+                          }}
+                        />
+                      </div>
+                      {daysLeft !== null && (
+                        <div className="px-6 pt-2 pb-0">
+                          <span className="text-xs font-medium" style={{ color: "hsl(217 91% 65%)" }}>
+                            {daysLeft === 0 ? "Último dia! 🔥" : `Faltam ${daysLeft} dia${daysLeft !== 1 ? "s" : ""}`}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : null;
+                })()}
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1">
