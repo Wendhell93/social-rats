@@ -213,7 +213,7 @@ function PrizeFormRow({
 
       {/* Image preview + upload */}
       <div
-        className="relative aspect-video bg-muted rounded-md overflow-hidden flex items-center justify-center cursor-pointer hover:bg-muted/80 transition-colors"
+        className="relative aspect-square bg-muted rounded-md overflow-hidden flex items-center justify-center cursor-pointer hover:bg-muted/80 transition-colors"
         onClick={() => fileRef.current?.click()}
       >
         {prize.image_url ? (
