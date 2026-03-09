@@ -103,7 +103,7 @@ function PrizeCard({
   return (
     <Card className="flex flex-col overflow-hidden border-border/60">
       {/* Image */}
-      <div className="relative aspect-video bg-muted flex items-center justify-center overflow-hidden">
+      <div className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {prize.image_url ? (
           <img
             src={prize.image_url}
@@ -213,7 +213,7 @@ function PrizeFormRow({
 
       {/* Image preview + upload */}
       <div
-        className="relative aspect-video bg-muted rounded-md overflow-hidden flex items-center justify-center cursor-pointer hover:bg-muted/80 transition-colors"
+        className="relative aspect-square bg-muted rounded-md overflow-hidden flex items-center justify-center cursor-pointer hover:bg-muted/80 transition-colors"
         onClick={() => fileRef.current?.click()}
       >
         {prize.image_url ? (
