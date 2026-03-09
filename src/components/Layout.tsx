@@ -34,6 +34,7 @@ const navItems = [
   { to: "/creators", icon: Users, label: "Criadores" },
   { to: "/posts", icon: FileText, label: "Conteúdos" },
   { to: "/ranking", icon: Trophy, label: "Ranking" },
+  { to: "/awards", icon: Gift, label: "Premiações" },
   { to: "/settings", icon: Settings, label: "Configurações" },
 ];
 
