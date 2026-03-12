@@ -641,25 +641,27 @@ export default function Awards() {
                         <p className="text-sm text-muted-foreground">{activeAward.description}</p>
                       )}
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDialogOpen(true)}
-                      >
-                        <Pencil className="w-3.5 h-3.5 mr-1.5" />
-                        Editar
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        disabled={closingId === activeAward.id}
-                        onClick={handleCloseCompetition}
-                      >
-                        <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
-                        {closingId ? "Encerrando…" : "Encerrar"}
-                      </Button>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDialogOpen(true)}
+                        >
+                          <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                          Editar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={closingId === activeAward.id}
+                          onClick={handleCloseCompetition}
+                        >
+                          <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                          {closingId ? "Encerrando…" : "Encerrar"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardHeader>
 
