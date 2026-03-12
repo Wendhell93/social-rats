@@ -35,6 +35,7 @@ const navItems = [
   { to: "/posts", icon: FileText, label: "Conteúdos" },
   { to: "/ranking", icon: Trophy, label: "Ranking" },
   { to: "/awards", icon: Gift, label: "Premiações" },
+  { to: "/quero-pontuar", icon: Star, label: "Quero Pontuar" },
   { to: "/settings", icon: Settings, label: "Configurações" },
 ];
 

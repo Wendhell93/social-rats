@@ -32,6 +32,7 @@ const App = () => (
           <Route path="/posts/:id/edit" element={<EditPost />} />
           <Route path="/ranking" element={<Ranking />} />
           <Route path="/awards" element={<Awards />} />
+          <Route path="/quero-pontuar" element={<ScoreSpaces />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
