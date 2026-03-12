@@ -507,6 +507,16 @@ export default function Awards() {
 
   useEffect(() => {
     load();
+    // Load scoring rules (read-only)
+    Promise.all([
+      supabase.from("engagement_weights").select("*").limit(1).single(),
+      supabase.from("stories_weights").select("*").limit(1).single(),
+      supabase.from("content_type_multipliers").select("*").limit(1).single(),
+    ]).then(([{ data: w }, { data: sw }, { data: ct }]) => {
+      if (w) setWeights(w as EngagementWeights);
+      if (sw) setStoriesW(sw as StoriesWeights);
+      if (ct) setMultipliers(ct as ContentTypeMultipliers);
+    });
   }, []);
 
   // Compute live ranking filtered by award period — uses created_at to match Ranking page
