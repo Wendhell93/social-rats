@@ -1,64 +1,83 @@
 
-## Análise completa do app — Sugestões de melhoria
+## New page: "Quero Pontuar"
 
-Analisei todas as páginas: Dashboard, Ranking, Posts, Criadores, Perfil do Criador, Novo Post e Editar Post. Aqui estão as principais oportunidades organizadas por impacto.
-
----
-
-### UX / Usabilidade
-
-**1. Filtro de período na aba Posts**
-Hoje o filtro de período existe no Dashboard e Ranking, mas a listagem de Posts não tem filtro nenhum (apenas busca por texto). Com muitos posts, fica difícil visualizar por período.
-
-**2. Ranking mostra todos os criadores, mesmo com 0 pontos**
-O ranking exibe criadores sem nenhum post no período, o que polui a lista. Deveria ocultar quem não tem pontos ou mostrar separado.
-
-**3. EditPost não tem campo de data de publicação**
-O formulário de Novo Post tem campo de data, mas o de Edição não. Se a data foi esquecida ou errada, não dá para corrigir.
-
-**4. Exclusão de criador sem confirmação**
-O botão "✕" na lista de criadores não tem nenhum `AlertDialog` de confirmação — diferente da exclusão de posts que tem. Pode causar exclusões acidentais.
-
-**5. Criadores sem score visível na listagem**
-Os cards de criadores não mostram o score total acumulado. O usuário precisa entrar no perfil para ver. Exibir o score diretamente no card daria uma visão imediata.
+### What it does
+A page where admins can create and manage **spaces** — each space is a card with a name, short description, a link, and a custom button label. Users click the button to be taken to that external link (calendar, form, Monday, etc.).
 
 ---
 
-### Funcionalidade
+### Database
 
-**6. Fórmula de score visível**
-As configurações têm os pesos, mas em nenhum lugar do app é explicado como o score é calculado. Um tooltip ou linha explicativa em "Métricas" (ex: "Score = 1×curtidas + 3×comentários + 5×compartilhamentos + 2×salvamentos") ajudaria muito.
+New table: `score_spaces`
 
-**7. Página de Settings — configurações básicas do app**
-A rota `/settings` existe mas não foi analisada. Se estiver vazia ou só com pesos, poderia ganhar o título do ranking, nome da equipe, etc.
+```sql
+CREATE TABLE public.score_spaces (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  description text,
+  url text NOT NULL,
+  button_label text NOT NULL DEFAULT 'Acessar',
+  display_order integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
-**8. Permalink do criador no ranking**
-Os nomes no ranking não são clicáveis para ir ao perfil. Só o Dashboard tem esse link.
-
-**9. Ordenação e filtros na listagem de Posts**
-Além da busca por texto, adicionar ordenação (mais recente, maior score, plataforma) tornaria o gerenciamento muito mais prático.
-
----
-
-### Proposta de implementação por prioridade
-
-```
-ALTA PRIORIDADE (impacto imediato)
-├── Confirmação ao excluir criador
-├── Campo de data na edição de post
-├── Ranking clicável para perfil do criador
-└── Ocultar criadores com 0 pontos no ranking (ou destacar)
-
-MÉDIA PRIORIDADE (melhora produtividade)
-├── Score visível no card de criador
-├── Tooltip da fórmula de score em Novo/Editar Post
-└── Ordenação na listagem de Posts
-
-BAIXA PRIORIDADE (refinamento)
-└── Filtro de período na listagem de Posts
+ALTER TABLE public.score_spaces ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "public select" ON public.score_spaces FOR SELECT USING (true);
+CREATE POLICY "public insert" ON public.score_spaces FOR INSERT WITH CHECK (true);
+CREATE POLICY "public update" ON public.score_spaces FOR UPDATE USING (true);
+CREATE POLICY "public delete" ON public.score_spaces FOR DELETE USING (true);
 ```
 
 ---
 
-**O que você quer implementar?**
-Posso fazer tudo de uma vez ou em partes — me diga o que tem mais urgência ou aprove o plano completo.
+### New page: `src/pages/ScoreSpaces.tsx`
+
+**Layout sketch:**
+```
+/quero-pontuar
+┌─────────────────────────────────────────────┐
+│  Quero Pontuar             [+ Novo Espaço]  │
+│  "Acesse os espaços abaixo para pontuar"    │
+├─────────────────────────────────────────────┤
+│  ┌──────────────┐  ┌──────────────┐         │
+│  │ 📋 Nome       │  │ 📅 Calendário │         │
+│  │ Descrição     │  │ Descrição    │         │
+│  │               │  │              │         │
+│  │ [Acessar →]  │  │ [Abrir →]    │         │
+│  │   ✏️  🗑️      │  │  ✏️  🗑️      │         │
+│  └──────────────┘  └──────────────┘         │
+└─────────────────────────────────────────────┘
+```
+
+Each card:
+- Name (bold title)
+- Description (muted text)
+- CTA button with custom label → opens the URL in a new tab (`target="_blank"`)
+- Edit (pencil) and Delete (trash) icon buttons at the bottom
+
+**Admin dialog** (single `Dialog`):
+- Field: Nome do espaço
+- Field: Descrição breve
+- Field: URL do link
+- Field: Texto do botão (e.g. "Acessar", "Ver Calendário", "Abrir Formulário")
+- Save / Cancel
+
+---
+
+### Files to create/modify
+
+| File | Action |
+|---|---|
+| `supabase/migrations/…_score_spaces.sql` | New table + RLS |
+| `src/pages/ScoreSpaces.tsx` | New page |
+| `src/App.tsx` | Add `/quero-pontuar` route |
+| `src/components/Layout.tsx` | Add nav item "Quero Pontuar" with `Star` icon between Premiações and Configurações |
+
+---
+
+### Design notes
+- Consistent with existing card style (dark cards, border, rounded)
+- CTA button uses the `default` blue primary variant
+- Cards displayed in a responsive grid (2–3 columns on desktop, 1 on mobile)
+- Deletion uses an `AlertDialog` confirmation (consistent with Posts page)
+- Empty state shows a friendly prompt to create the first space
