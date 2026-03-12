@@ -455,6 +455,10 @@ function AwardFormDialog({
 export default function Awards() {
   const { toast } = useToast();
   const { isAdmin } = useAuth();
+  const [showRules, setShowRules] = useState(false);
+  const [weights, setWeights] = useState<EngagementWeights | null>(null);
+  const [storiesW, setStoriesW] = useState<StoriesWeights | null>(null);
+  const [multipliers, setMultipliers] = useState<ContentTypeMultipliers | null>(null);
   const [activeAward, setActiveAward] = useState<Award | null>(null);
   const [activePrizes, setActivePrizes] = useState<AwardPrize[]>([]);
   const [pastAwards, setPastAwards] = useState<Award[]>([]);
