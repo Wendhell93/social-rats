@@ -133,7 +133,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   async function handleSignOut() {
     await signOut();
     navigate("/");
-    setMobileMenuOpen(false);
+    setTopMenuOpen(false);
+    setBottomMenuOpen(false);
   }
 
   return (
