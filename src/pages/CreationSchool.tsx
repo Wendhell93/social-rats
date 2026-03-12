@@ -126,7 +126,7 @@ export default function CreationSchool() {
   }
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 md:p-8 space-y-6 md:space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>

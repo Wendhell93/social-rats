@@ -579,7 +579,7 @@ export default function Awards() {
   const liveRanking = activeAward ? computeLiveRanking(activeAward) : [];
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -592,9 +592,9 @@ export default function Awards() {
           </p>
         </div>
         {isAdmin && (
-          <Button onClick={() => setDialogOpen(true)} disabled={!!activeAward && activeAward.is_active && !dialogOpen}>
-            <Plus className="w-4 h-4 mr-2" />
-            Novo desafio
+          <Button onClick={() => setDialogOpen(true)} disabled={!!activeAward && activeAward.is_active && !dialogOpen} className="flex-shrink-0">
+            <Plus className="w-4 h-4 mr-1 md:mr-2" />
+            <span className="hidden sm:inline">Novo desafio</span><span className="sm:hidden">Novo</span>
           </Button>
         )}
       </div>
