@@ -6,10 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Heart, MessageCircle, Share2, Bookmark, Save, Info, Layers, Loader2,
-  Eye, Repeat2, MousePointerClick, BookImage
+  Eye, Repeat2, MousePointerClick, BookImage, UserPlus, Trash2, ShieldCheck, Mail
 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 
 const feedWeightFields = [
   { key: "likes_weight", label: "Curtidas", icon: Heart, description: "Peso por curtida" },
@@ -31,7 +36,10 @@ const multiplierFields = [
   { key: "announcement", label: "Anúncio", emoji: "📣", description: "Posts patrocinados, publicidade" },
 ] as const;
 
+type AdminEmail = { id: string; email: string; created_at: string };
+
 export default function Settings() {
+  const { user } = useAuth();
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
   const [form, setForm] = useState({ likes_weight: 1, comments_weight: 3, shares_weight: 5, saves_weight: 2 });
   const [multipliers, setMultipliers] = useState<ContentTypeMultipliers | null>(null);
@@ -40,14 +48,23 @@ export default function Settings() {
   const [storiesForm, setStoriesForm] = useState({ views_pico_weight: 0.25, interactions_weight: 3, forwards_weight: 5, cta_clicks_weight: 10 });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Admin management
+  const [adminEmails, setAdminEmails] = useState<AdminEmail[]>([]);
+  const [newEmail, setNewEmail] = useState("");
+  const [addingAdmin, setAddingAdmin] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AdminEmail | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const { toast } = useToast();
 
   useEffect(() => {
     async function load() {
-      const [{ data: w }, { data: m }, { data: sw }] = await Promise.all([
+      const [{ data: w }, { data: m }, { data: sw }, { data: ae }] = await Promise.all([
         supabase.from("engagement_weights").select("*").limit(1).single(),
         supabase.from("content_type_multipliers").select("*").limit(1).single(),
         (supabase as any).from("stories_weights").select("*").limit(1).single(),
+        (supabase as any).from("admin_emails").select("*").order("created_at", { ascending: true }),
       ]);
       if (w) {
         setWeights(w);
@@ -66,6 +83,7 @@ export default function Settings() {
           cta_clicks_weight: sw.cta_clicks_weight,
         });
       }
+      if (ae) setAdminEmails(ae as AdminEmail[]);
       setLoading(false);
     }
     load();
@@ -120,6 +138,52 @@ export default function Settings() {
     setSaving(false);
   }
 
+  async function handleAddAdmin() {
+    const email = newEmail.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: "E-mail inválido", variant: "destructive" });
+      return;
+    }
+    if (adminEmails.some(a => a.email === email)) {
+      toast({ title: "Este e-mail já é admin", variant: "destructive" });
+      return;
+    }
+    setAddingAdmin(true);
+    const { data, error } = await (supabase as any).from("admin_emails").insert({ email }).select().single();
+    if (error) {
+      toast({ title: "Erro ao adicionar admin", description: error.message, variant: "destructive" });
+    } else {
+      setAdminEmails(prev => [...prev, data as AdminEmail]);
+      setNewEmail("");
+      toast({ title: "Admin adicionado!" });
+    }
+    setAddingAdmin(false);
+  }
+
+  async function handleDeleteAdmin(target: AdminEmail) {
+    if (adminEmails.length <= 1) {
+      toast({ title: "Deve existir pelo menos um admin", variant: "destructive" });
+      setDeleteTarget(null);
+      return;
+    }
+    // Can't remove yourself
+    if (target.email === user?.email) {
+      toast({ title: "Você não pode remover seu próprio acesso", variant: "destructive" });
+      setDeleteTarget(null);
+      return;
+    }
+    setDeletingId(target.id);
+    const { error } = await (supabase as any).from("admin_emails").delete().eq("id", target.id);
+    if (error) {
+      toast({ title: "Erro ao remover admin", description: error.message, variant: "destructive" });
+    } else {
+      setAdminEmails(prev => prev.filter(a => a.id !== target.id));
+      toast({ title: "Admin removido." });
+    }
+    setDeletingId(null);
+    setDeleteTarget(null);
+  }
+
   const exampleFeedScore = (100 * form.likes_weight + 20 * form.comments_weight + 5 * form.shares_weight + 15 * form.saves_weight);
   const exampleStoriesScore = (5000 * storiesForm.views_pico_weight + 80 * storiesForm.interactions_weight + 15 * storiesForm.forwards_weight + 10 * storiesForm.cta_clicks_weight);
 
@@ -127,13 +191,69 @@ export default function Settings() {
     <div className="p-8 max-w-xl">
       <div className="mb-8">
         <h1 className="text-2xl font-bold">Configurações</h1>
-        <p className="text-muted-foreground text-sm mt-1">Pesos de engajamento e multiplicadores por tipo de conteúdo</p>
+        <p className="text-muted-foreground text-sm mt-1">Pesos de engajamento, multiplicadores e administradores</p>
       </div>
 
       {loading ? (
         <p className="text-muted-foreground text-sm">Carregando...</p>
       ) : (
         <div className="space-y-6">
+          {/* Admin Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-primary" />
+                Administradores
+              </CardTitle>
+              <CardDescription>E-mails autorizados a acessar o painel de administração via login Google.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Current admins list */}
+              <div className="space-y-2">
+                {adminEmails.map(a => (
+                  <div key={a.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-accent border border-border">
+                    <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm flex-1 truncate">{a.email}</span>
+                    {a.email === user?.email && (
+                      <span className="text-[10px] font-medium text-primary px-1.5 py-0.5 bg-primary/10 rounded">você</span>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0"
+                      onClick={() => setDeleteTarget(a)}
+                      disabled={deletingId === a.id || adminEmails.length <= 1 || a.email === user?.email}
+                      title={a.email === user?.email ? "Você não pode remover seu próprio acesso" : "Remover admin"}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add new admin */}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="novo@email.com"
+                  value={newEmail}
+                  onChange={e => setNewEmail(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleAddAdmin()}
+                  className="flex-1 text-sm"
+                  type="email"
+                />
+                <Button
+                  onClick={handleAddAdmin}
+                  disabled={addingAdmin || !newEmail.trim()}
+                  className="gap-1.5 shrink-0"
+                  size="sm"
+                >
+                  {addingAdmin ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
+                  Cadastrar admin
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Feed — Pesos de Engajamento */}
           <Card>
             <CardHeader>
@@ -279,6 +399,27 @@ export default function Settings() {
           </Button>
         </div>
       )}
+
+      {/* Delete Admin Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover admin?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{deleteTarget?.email}</strong> perderá o acesso ao painel administrativo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteTarget && handleDeleteAdmin(deleteTarget)}
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
