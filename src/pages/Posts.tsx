@@ -85,9 +85,11 @@ export default function Posts() {
           </div>
           <p className="text-muted-foreground text-sm">{posts.length} posts cadastrados</p>
         </div>
-        <Button asChild className="gradient-primary text-white border-0 glow-blue">
-          <Link to="/posts/new"><Plus className="w-4 h-4 mr-2" /> Novo Post</Link>
-        </Button>
+        {isAdmin && (
+          <Button asChild className="gradient-primary text-white border-0 glow-blue">
+            <Link to="/posts/new"><Plus className="w-4 h-4 mr-2" /> Novo Post</Link>
+          </Button>
+        )}
       </div>
 
       <div className="flex items-center gap-2 mb-6 flex-wrap">
