@@ -32,7 +32,11 @@ import {
   Upload,
   CheckCircle,
   Image as ImageIcon,
+  ChevronDown,
+  ChevronUp,
+  Scroll,
 } from "lucide-react";
+import { EngagementWeights, StoriesWeights, ContentTypeMultipliers } from "@/lib/types";
 import { parseISO, isWithinInterval, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 

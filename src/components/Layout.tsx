@@ -29,7 +29,7 @@ const baseNavItems = [
   { to: "/creators", icon: Users, label: "Criadores" },
   { to: "/posts", icon: FileText, label: "Conteúdos" },
   { to: "/ranking", icon: Trophy, label: "Ranking" },
-  { to: "/awards", icon: Gift, label: "Premiações" },
+  { to: "/awards", icon: Gift, label: "Prêmios e Regras" },
   { to: "/quero-pontuar", icon: Star, label: "Quero Pontuar" },
   { to: "/escola-de-criacao", icon: BookOpen, label: "Escola de criação" },
 ];
