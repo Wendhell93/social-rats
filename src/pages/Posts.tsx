@@ -76,8 +76,8 @@ export default function Posts() {
   const platforms = Array.from(new Set(posts.map(p => p.platform))).sort();
 
   return (
-    <div className="p-8 animate-fade-in">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 md:p-8 animate-fade-in">
+      <div className="flex items-center justify-between mb-6 md:mb-8">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <FileText className="w-5 h-5 text-primary" />
@@ -86,26 +86,29 @@ export default function Posts() {
           <p className="text-muted-foreground text-sm">{posts.length} posts cadastrados</p>
         </div>
         {isAdmin && (
-          <Button asChild className="gradient-primary text-white border-0 glow-blue">
-            <Link to="/posts/new"><Plus className="w-4 h-4 mr-2" /> Novo Post</Link>
+          <Button asChild className="gradient-primary text-white border-0 glow-blue flex-shrink-0">
+            <Link to="/posts/new"><Plus className="w-4 h-4 mr-1 md:mr-2" /> <span className="hidden sm:inline">Novo Post</span><span className="sm:hidden">Novo</span></Link>
           </Button>
         )}
       </div>
 
-      <div className="flex items-center gap-2 mb-6 flex-wrap">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input className="pl-9 bg-card border-border" placeholder="Buscar por título ou criador..." value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
+      {/* Search bar */}
+      <div className="relative mb-3">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input className="pl-9 bg-card border-border" placeholder="Buscar por título ou criador..." value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
+
+      {/* Filters — horizontal scroll on mobile */}
+      <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap scrollbar-none">
         <Select value={platformFilter} onValueChange={setPlatformFilter}>
-          <SelectTrigger className="w-36 h-10 text-sm"><SelectValue placeholder="Plataforma" /></SelectTrigger>
+          <SelectTrigger className="w-32 h-9 text-sm flex-shrink-0"><SelectValue placeholder="Plataforma" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas</SelectItem>
             {platforms.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={formatFilter} onValueChange={setFormatFilter}>
-          <SelectTrigger className="w-32 h-10 text-sm"><SelectValue placeholder="Formato" /></SelectTrigger>
+          <SelectTrigger className="w-32 h-9 text-sm flex-shrink-0"><SelectValue placeholder="Formato" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Feed + Stories</SelectItem>
             <SelectItem value="feed">Feed</SelectItem>
@@ -113,13 +116,13 @@ export default function Posts() {
           </SelectContent>
         </Select>
         <Select value={sortBy} onValueChange={v => setSortBy(v as "date" | "score")}>
-          <SelectTrigger className="w-36 h-10 text-sm"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-36 h-9 text-sm flex-shrink-0"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="date">Mais recente</SelectItem>
             <SelectItem value="score">Maior score</SelectItem>
           </SelectContent>
         </Select>
-        <PeriodSelector />
+        <div className="flex-shrink-0"><PeriodSelector /></div>
       </div>
 
       {loading ? (

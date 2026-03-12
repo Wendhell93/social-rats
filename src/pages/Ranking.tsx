@@ -70,8 +70,8 @@ export default function Ranking() {
     .sort((a, b) => b.totalScore - a.totalScore);
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
+    <div className="p-4 md:p-8">
+      <div className="mb-6 md:mb-8">
         <h1 className="text-2xl font-bold">Ranking</h1>
         <p className="text-muted-foreground text-sm mt-1">Classificação por engajamento</p>
       </div>
@@ -87,22 +87,22 @@ export default function Ranking() {
             <CardContent className="p-0">
               <div className="divide-y">
                 {ranking.map((entry, i) => (
-                  <div key={entry.member.id} className={`flex items-center gap-4 px-6 py-4 ${i < 3 ? medalBg[i] : ""}`}>
-                    <span className="w-8 text-center font-bold text-lg">{i < 3 ? medals[i] : `#${i + 1}`}</span>
-                    <Avatar>
+                  <div key={entry.member.id} className={`flex items-center gap-3 px-4 md:px-6 py-3 md:py-4 ${i < 3 ? medalBg[i] : ""}`}>
+                    <span className="w-7 md:w-8 text-center font-bold text-base md:text-lg flex-shrink-0">{i < 3 ? medals[i] : `#${i + 1}`}</span>
+                    <Avatar className="w-8 h-8 md:w-10 md:h-10 flex-shrink-0">
                       <AvatarImage src={entry.member.avatar_url || undefined} alt={entry.member.name} />
-                      <AvatarFallback className="font-bold text-sm">{entry.member.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      <AvatarFallback className="font-bold text-xs md:text-sm">{entry.member.name.slice(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <Link to={`/creators/${entry.member.id}`} className="font-semibold hover:text-primary transition-colors">{entry.member.name}</Link>
-                      {entry.member.role && <p className="text-xs text-muted-foreground">{entry.member.role}</p>}
+                    <div className="flex-1 min-w-0">
+                      <Link to={`/creators/${entry.member.id}`} className="font-semibold hover:text-primary transition-colors text-sm md:text-base truncate block">{entry.member.name}</Link>
+                      {entry.member.role && <p className="text-xs text-muted-foreground truncate">{entry.member.role}</p>}
                     </div>
-                    <div className="text-center px-4">
-                      <p className="text-sm text-muted-foreground">Posts</p>
-                      <p className="font-semibold">{entry.totalPosts}</p>
+                    <div className="hidden sm:block text-center px-3 md:px-4 flex-shrink-0">
+                      <p className="text-xs text-muted-foreground">Posts</p>
+                      <p className="font-semibold text-sm">{entry.totalPosts}</p>
                     </div>
-                    <div className="text-right">
-                      <p className={`text-2xl font-bold ${i < 3 ? medalColors[i] : "text-primary"}`}>{entry.totalScore.toFixed(0)}</p>
+                    <div className="text-right flex-shrink-0">
+                      <p className={`text-xl md:text-2xl font-bold ${i < 3 ? medalColors[i] : "text-primary"}`}>{entry.totalScore.toFixed(0)}</p>
                       <p className="text-xs text-muted-foreground">pontos</p>
                     </div>
                   </div>

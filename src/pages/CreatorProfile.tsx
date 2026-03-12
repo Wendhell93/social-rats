@@ -68,15 +68,15 @@ export default function CreatorProfile() {
     }));
 
   return (
-    <div className="p-8 animate-fade-in">
+    <div className="p-4 md:p-8 animate-fade-in">
       <Link to="/creators" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
         <ArrowLeft className="w-4 h-4" /> Voltar para Criadores
       </Link>
 
       {/* Header */}
-      <div className="bg-card border border-border rounded-xl p-6 mb-6 relative overflow-hidden">
+      <div className="bg-card border border-border rounded-xl p-5 md:p-6 mb-6 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-secondary/5 pointer-events-none" />
-        <div className="relative flex items-center gap-5">
+        <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5">
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center flex-shrink-0 border border-primary/20 glow-blue">
             {creator.avatar_url ? (
               <img src={creator.avatar_url} alt={creator.name} className="w-20 h-20 rounded-2xl object-cover" />
