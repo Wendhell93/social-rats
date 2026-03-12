@@ -32,7 +32,11 @@ import {
   Upload,
   CheckCircle,
   Image as ImageIcon,
+  ChevronDown,
+  ChevronUp,
+  Scroll,
 } from "lucide-react";
+import { EngagementWeights, StoriesWeights, ContentTypeMultipliers } from "@/lib/types";
 import { parseISO, isWithinInterval, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -451,6 +455,10 @@ function AwardFormDialog({
 export default function Awards() {
   const { toast } = useToast();
   const { isAdmin } = useAuth();
+  const [showRules, setShowRules] = useState(false);
+  const [weights, setWeights] = useState<EngagementWeights | null>(null);
+  const [storiesW, setStoriesW] = useState<StoriesWeights | null>(null);
+  const [multipliers, setMultipliers] = useState<ContentTypeMultipliers | null>(null);
   const [activeAward, setActiveAward] = useState<Award | null>(null);
   const [activePrizes, setActivePrizes] = useState<AwardPrize[]>([]);
   const [pastAwards, setPastAwards] = useState<Award[]>([]);
@@ -499,6 +507,16 @@ export default function Awards() {
 
   useEffect(() => {
     load();
+    // Load scoring rules (read-only)
+    Promise.all([
+      supabase.from("engagement_weights").select("*").limit(1).single(),
+      supabase.from("stories_weights").select("*").limit(1).single(),
+      supabase.from("content_type_multipliers").select("*").limit(1).single(),
+    ]).then(([{ data: w }, { data: sw }, { data: ct }]) => {
+      if (w) setWeights(w as EngagementWeights);
+      if (sw) setStoriesW(sw as StoriesWeights);
+      if (ct) setMultipliers(ct as ContentTypeMultipliers);
+    });
   }, []);
 
   // Compute live ranking filtered by award period — uses created_at to match Ranking page
@@ -563,14 +581,14 @@ export default function Awards() {
   return (
     <div className="p-8 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Gift className="w-6 h-6 text-primary" />
-            Premiações
+            Prêmios e Regras
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Desafios ativos e histórico de vencedores
+            Desafios, prêmios e regras de pontuação
           </p>
         </div>
         {isAdmin && (
@@ -578,6 +596,124 @@ export default function Awards() {
             <Plus className="w-4 h-4 mr-2" />
             Novo desafio
           </Button>
+        )}
+      </div>
+
+      {/* ── Scoring Rules Toggle ─────────────────────────────────────────── */}
+      <div className="mb-8">
+        <button
+          onClick={() => setShowRules((v) => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group"
+        >
+          <Scroll className="w-4 h-4 text-primary group-hover:text-primary" />
+          <span>Ver regras de pontuação</span>
+          {showRules ? (
+            <ChevronUp className="w-4 h-4 transition-transform" />
+          ) : (
+            <ChevronDown className="w-4 h-4 transition-transform" />
+          )}
+        </button>
+
+        {showRules && (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+            {/* Feed */}
+            <Card className="border-border/60 bg-card/50">
+              <CardHeader className="pb-3 pt-4 px-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <span className="text-base">📱</span> Feed
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 space-y-3">
+                <div className="space-y-2">
+                  {[
+                    { icon: "❤️", label: "Curtidas", val: weights?.likes_weight },
+                    { icon: "💬", label: "Comentários", val: weights?.comments_weight },
+                    { icon: "🔁", label: "Compartilhamentos", val: weights?.shares_weight },
+                    { icon: "🔖", label: "Salvamentos", val: weights?.saves_weight },
+                  ].map(({ icon, label, val }) => (
+                    <div key={label} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1.5">
+                        <span>{icon}</span> {label}
+                      </span>
+                      <span className="font-mono font-semibold text-foreground tabular-nums">
+                        ×{val ?? "—"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-2 border-t border-border/40">
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Fórmula: <span className="font-mono">(métricas × peso) × multiplicador</span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Stories */}
+            <Card className="border-border/60 bg-card/50">
+              <CardHeader className="pb-3 pt-4 px-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <span className="text-base">⭕</span> Stories
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 space-y-3">
+                <div className="space-y-2">
+                  {[
+                    { icon: "👁️", label: "Views Pico", val: storiesW?.views_pico_weight },
+                    { icon: "💬", label: "Interações", val: storiesW?.interactions_weight },
+                    { icon: "🔁", label: "Encaminhamentos", val: storiesW?.forwards_weight },
+                    { icon: "🖱️", label: "Cliques CTA", val: storiesW?.cta_clicks_weight },
+                  ].map(({ icon, label, val }) => (
+                    <div key={label} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1.5">
+                        <span>{icon}</span> {label}
+                      </span>
+                      <span className="font-mono font-semibold text-foreground tabular-nums">
+                        ×{val ?? "—"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-2 border-t border-border/40">
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Soma ponderada independente do tipo de conteúdo
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Multipliers */}
+            <Card className="border-border/60 bg-card/50">
+              <CardHeader className="pb-3 pt-4 px-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <span className="text-base">✖️</span> Multiplicadores
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 space-y-3">
+                <div className="space-y-2">
+                  {[
+                    { icon: "🔧", label: "Técnico", val: multipliers?.technical },
+                    { icon: "😂", label: "Meme", val: multipliers?.meme },
+                    { icon: "📣", label: "Anúncio", val: multipliers?.announcement },
+                  ].map(({ icon, label, val }) => (
+                    <div key={label} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1.5">
+                        <span>{icon}</span> {label}
+                      </span>
+                      <span className="font-mono font-semibold text-foreground tabular-nums">
+                        ×{val ?? "—"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-2 border-t border-border/40">
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Aplicado apenas em posts de Feed
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
 

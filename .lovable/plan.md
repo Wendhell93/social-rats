@@ -1,57 +1,64 @@
 
-## Plano: Renomear "Premiações" → "Prêmios e Regras" + seção de regras colapsável
+## Análise completa do app — Sugestões de melhoria
 
-### O que muda
+Analisei todas as páginas: Dashboard, Ranking, Posts, Criadores, Perfil do Criador, Novo Post e Editar Post. Aqui estão as principais oportunidades organizadas por impacto.
 
-**1. Layout.tsx** — renomear label do item de menu de `"Premiações"` → `"Prêmios e Regras"` (mantém ícone `Gift` e rota `/awards`).
+---
 
-**2. Awards.tsx** — 3 mudanças:
+### UX / Usabilidade
 
-#### 2a. Título da página
-- `h1`: de `"Premiações"` → `"Prêmios e Regras"`
-- Subtítulo: `"Desafios ativos e histórico de vencedores"` → `"Desafios, prêmios e regras de pontuação"`
+**1. Filtro de período na aba Posts**
+Hoje o filtro de período existe no Dashboard e Ranking, mas a listagem de Posts não tem filtro nenhum (apenas busca por texto). Com muitos posts, fica difícil visualizar por período.
 
-#### 2b. Buscar dados de configurações (somente leitura)
-Adicionar `useEffect` para carregar em paralelo:
-- `engagement_weights` (pesos do feed)
-- `stories_weights` (pesos dos stories)
-- `content_type_multipliers` (multiplicadores por tipo)
+**2. Ranking mostra todos os criadores, mesmo com 0 pontos**
+O ranking exibe criadores sem nenhum post no período, o que polui a lista. Deveria ocultar quem não tem pontos ou mostrar separado.
 
-Nenhum estado de edição — só leitura (`weights`, `storiesW`, `multipliers`).
+**3. EditPost não tem campo de data de publicação**
+O formulário de Novo Post tem campo de data, mas o de Edição não. Se a data foi esquecida ou errada, não dá para corrigir.
 
-#### 2c. Botão "Ver regras" + painel colapsável
-Logo abaixo do header da página, antes da seção do desafio ativo, adicionar:
+**4. Exclusão de criador sem confirmação**
+O botão "✕" na lista de criadores não tem nenhum `AlertDialog` de confirmação — diferente da exclusão de posts que tem. Pode causar exclusões acidentais.
 
-```text
-[ Ver regras de pontuação ▾ ]    ← botão toggle, visível para todos
+**5. Criadores sem score visível na listagem**
+Os cards de criadores não mostram o score total acumulado. O usuário precisa entrar no perfil para ver. Exibir o score diretamente no card daria uma visão imediata.
 
-Quando expandido, exibe 3 blocos lado a lado (ou empilhados no mobile):
+---
 
-┌─────────────────────┐  ┌─────────────────────┐  ┌──────────────────────┐
-│  Feed               │  │  Stories             │  │  Multiplicadores     │
-│  ❤ Curtidas  ×1     │  │  👁 Views Pico ×0.25 │  │  🔧 Técnico    ×1.5 │
-│  💬 Comentários ×3  │  │  💬 Interações ×3    │  │  😂 Meme       ×0.5 │
-│  🔁 Compart. ×5     │  │  🔁 Encaminh. ×5     │  │  📣 Anúncio    ×1.0 │
-│  🔖 Salvam.  ×2     │  │  🖱 Cliques CTA ×10  │  │                      │
-│                     │  │                      │  │  (Feed only)         │
-│  Fórmula:           │  │  Fórmula:            │  │                      │
-│  (métricas × peso)  │  │  soma ponderada      │  │                      │
-│  × multiplicador    │  │  independente        │  │                      │
-└─────────────────────┘  └─────────────────────┘  └──────────────────────┘
+### Funcionalidade
+
+**6. Fórmula de score visível**
+As configurações têm os pesos, mas em nenhum lugar do app é explicado como o score é calculado. Um tooltip ou linha explicativa em "Métricas" (ex: "Score = 1×curtidas + 3×comentários + 5×compartilhamentos + 2×salvamentos") ajudaria muito.
+
+**7. Página de Settings — configurações básicas do app**
+A rota `/settings` existe mas não foi analisada. Se estiver vazia ou só com pesos, poderia ganhar o título do ranking, nome da equipe, etc.
+
+**8. Permalink do criador no ranking**
+Os nomes no ranking não são clicáveis para ir ao perfil. Só o Dashboard tem esse link.
+
+**9. Ordenação e filtros na listagem de Posts**
+Além da busca por texto, adicionar ordenação (mais recente, maior score, plataforma) tornaria o gerenciamento muito mais prático.
+
+---
+
+### Proposta de implementação por prioridade
+
+```
+ALTA PRIORIDADE (impacto imediato)
+├── Confirmação ao excluir criador
+├── Campo de data na edição de post
+├── Ranking clicável para perfil do criador
+└── Ocultar criadores com 0 pontos no ranking (ou destacar)
+
+MÉDIA PRIORIDADE (melhora produtividade)
+├── Score visível no card de criador
+├── Tooltip da fórmula de score em Novo/Editar Post
+└── Ordenação na listagem de Posts
+
+BAIXA PRIORIDADE (refinamento)
+└── Filtro de período na listagem de Posts
 ```
 
-Implementação: `useState(false)` para `showRules`. Botão com ícone `ChevronDown`/`ChevronUp`. Os blocos são `Card` read-only sem inputs — apenas exibição.
+---
 
-### Arquivos modificados
-
-| Arquivo | Mudança |
-|---|---|
-| `src/components/Layout.tsx` | Label `"Premiações"` → `"Prêmios e Regras"` |
-| `src/pages/Awards.tsx` | Título + subtítulo + busca de pesos + botão "Ver regras" + painel colapsável somente leitura |
-
-### Dados carregados (somente leitura)
-- `engagement_weights` → exibe peso de curtidas, comentários, compartilhamentos, salvamentos
-- `stories_weights` → exibe peso de views pico, interações, encaminhamentos, cliques CTA
-- `content_type_multipliers` → exibe multiplicador por tipo (técnico, meme, anúncio)
-
-Sem migrations, sem novos estados de edição, sem impacto em outras páginas.
+**O que você quer implementar?**
+Posso fazer tudo de uma vez ou em partes — me diga o que tem mais urgência ou aprove o plano completo.
