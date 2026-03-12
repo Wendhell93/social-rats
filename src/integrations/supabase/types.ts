@@ -274,6 +274,36 @@ export type Database = {
           },
         ]
       }
+      score_spaces: {
+        Row: {
+          button_label: string
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          name: string
+          url: string
+        }
+        Insert: {
+          button_label?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          name: string
+          url: string
+        }
+        Update: {
+          button_label?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          name?: string
+          url?: string
+        }
+        Relationships: []
+      }
       stories_weights: {
         Row: {
           cta_clicks_weight: number
