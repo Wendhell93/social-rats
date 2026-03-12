@@ -31,20 +31,20 @@ const RatIcon = () => (
 
 const baseNavItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/creators", icon: Users, label: "Criadores" },
-  { to: "/posts", icon: FileText, label: "Conteúdos" },
   { to: "/ranking", icon: Trophy, label: "Ranking" },
-  { to: "/awards", icon: Gift, label: "Prêmios e Regras" },
   { to: "/quero-pontuar", icon: Star, label: "Quero Pontuar" },
+  { to: "/awards", icon: Gift, label: "Prêmios e Regras" },
   { to: "/escola-de-criacao", icon: BookOpen, label: "Escola de criação" },
+  { to: "/posts", icon: FileText, label: "Conteúdos" },
+  { to: "/creators", icon: Users, label: "Criadores" },
 ];
 
 // Bottom nav: 4 primary items + "Mais" drawer
 const bottomPrimary = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/creators", icon: Users, label: "Criadores" },
-  { to: "/posts", icon: FileText, label: "Conteúdos" },
+  { to: "/quero-pontuar", icon: Star, label: "Quero Pontuar" },
   { to: "/ranking", icon: Trophy, label: "Ranking" },
+  { to: "/awards", icon: Gift, label: "Prêmios e Regras" },
 ];
 
 function SidebarContent({ navItems, user, isAdmin, onSignOut }: {
