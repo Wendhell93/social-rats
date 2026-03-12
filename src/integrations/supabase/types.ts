@@ -116,6 +116,36 @@ export type Database = {
         }
         Relationships: []
       }
+      creation_school_spaces: {
+        Row: {
+          button_label: string
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          name: string
+          url: string
+        }
+        Insert: {
+          button_label?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          name: string
+          url: string
+        }
+        Update: {
+          button_label?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          name?: string
+          url?: string
+        }
+        Relationships: []
+      }
       engagement_weights: {
         Row: {
           comments_weight: number
