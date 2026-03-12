@@ -205,24 +205,26 @@ export default function CreationSchool() {
                     {space.button_label}
                   </Button>
                 </a>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                    onClick={() => openEdit(space)}
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    onClick={() => setDeleteTarget(space)}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
+                {isAdmin && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      onClick={() => openEdit(space)}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleteTarget(space)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                )}
               </CardFooter>
             </Card>
           ))}
