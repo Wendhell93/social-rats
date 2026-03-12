@@ -120,7 +120,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin, signOut } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [topMenuOpen, setTopMenuOpen] = useState(false);
+  const [bottomMenuOpen, setBottomMenuOpen] = useState(false);
 
   const navItems = isAdmin
     ? [...baseNavItems, { to: "/settings", icon: Settings, label: "Configurações" }]
@@ -132,7 +133,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   async function handleSignOut() {
     await signOut();
     navigate("/");
-    setMobileMenuOpen(false);
+    setTopMenuOpen(false);
+    setBottomMenuOpen(false);
   }
 
   return (
@@ -162,7 +164,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* "Mais" sheet trigger (hamburger) */}
-        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <Sheet open={topMenuOpen} onOpenChange={setTopMenuOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
               <Menu className="w-5 h-5" />
@@ -172,7 +174,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="px-6 py-5 border-b border-sidebar-border">
               <p className="text-sm font-bold text-foreground">Menu</p>
             </div>
-            <div className="flex flex-col h-[calc(100%-57px)]" onClick={() => setMobileMenuOpen(false)}>
+            <div className="flex flex-col h-[calc(100%-57px)]" onClick={() => setTopMenuOpen(false)}>
               <SidebarContent navItems={navItems} user={user} isAdmin={isAdmin} onSignOut={handleSignOut} />
             </div>
           </SheetContent>
@@ -209,7 +211,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         })}
 
         {/* "Mais" tab */}
-        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <Sheet open={bottomMenuOpen} onOpenChange={setBottomMenuOpen}>
           <SheetTrigger asChild>
             <button
               className={cn(
@@ -226,7 +228,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <SheetContent side="bottom" className="rounded-t-2xl border-t border-sidebar-border pb-safe" style={{ background: "hsl(225 28% 6%)" }}>
             <div className="pt-2 pb-1">
               <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-              <div className="space-y-1 px-2" onClick={() => setMobileMenuOpen(false)}>
+              <div className="space-y-1 px-2" onClick={() => setBottomMenuOpen(false)}>
                 {moreItems.map(({ to, icon: Icon, label }) => {
                   const active = to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
                   return (
