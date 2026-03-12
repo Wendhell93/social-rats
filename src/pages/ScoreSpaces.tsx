@@ -164,13 +164,15 @@ export default function ScoreSpaces() {
           <div>
             <p className="text-foreground font-semibold">Nenhum espaço criado ainda</p>
             <p className="text-muted-foreground text-sm mt-1">
-              Clique em "Novo Espaço" para adicionar o primeiro link de pontuação
+              {isAdmin ? 'Clique em "Novo Espaço" para adicionar o primeiro link de pontuação' : "Nenhum espaço disponível no momento."}
             </p>
           </div>
-          <Button onClick={openCreate} variant="outline">
-            <Plus className="w-4 h-4 mr-2" />
-            Criar primeiro espaço
-          </Button>
+          {isAdmin && (
+            <Button onClick={openCreate} variant="outline">
+              <Plus className="w-4 h-4 mr-2" />
+              Criar primeiro espaço
+            </Button>
+          )}
         </div>
       )}
 
