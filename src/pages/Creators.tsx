@@ -156,7 +156,7 @@ export default function Creators() {
         <div className="text-center py-20">
           <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
           <p className="text-muted-foreground mb-4">{search ? "Nenhum resultado." : "Nenhum criador cadastrado."}</p>
-          {!search && <Button onClick={openNew}>Cadastrar primeiro criador</Button>}
+          {!search && isAdmin && <Button onClick={openNew}>Cadastrar primeiro criador</Button>}
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -182,23 +182,26 @@ export default function Creators() {
                 <Link to={`/creators/${c.id}`} className="flex-1">
                   <Button variant="outline" size="sm" className="w-full text-xs border-border hover:border-primary hover:text-primary">Ver perfil</Button>
                 </Link>
-                <Button variant="outline" size="sm" className="text-xs border-border hover:border-primary" onClick={() => openEdit(c)}>Editar</Button>
-                <Button variant="outline" size="sm" className="text-xs border-border hover:border-primary" onClick={() => openEdit(c)}>Editar</Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="text-xs text-destructive hover:text-destructive">✕</Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent className="bg-card border-border">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Remover criador?</AlertDialogTitle>
-                      <AlertDialogDescription>Esta ação não pode ser desfeita. Todos os dados de {c.name} serão removidos.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => del(c.id)} className="bg-destructive text-destructive-foreground">Remover</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                {isAdmin && (
+                  <>
+                    <Button variant="outline" size="sm" className="text-xs border-border hover:border-primary" onClick={() => openEdit(c)}>Editar</Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-xs text-destructive hover:text-destructive">✕</Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="bg-card border-border">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remover criador?</AlertDialogTitle>
+                          <AlertDialogDescription>Esta ação não pode ser desfeita. Todos os dados de {c.name} serão removidos.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => del(c.id)} className="bg-destructive text-destructive-foreground">Remover</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </>
+                )}
               </div>
             </div>
           ))}
