@@ -36,6 +36,7 @@ const navItems = [
   { to: "/ranking", icon: Trophy, label: "Ranking" },
   { to: "/awards", icon: Gift, label: "Premiações" },
   { to: "/quero-pontuar", icon: Star, label: "Quero Pontuar" },
+  { to: "/escola-de-criacao", icon: BookOpen, label: "Escola de criação" },
   { to: "/settings", icon: Settings, label: "Configurações" },
 ];
 
