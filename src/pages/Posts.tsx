@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Post, Creator } from "@/lib/types";
 import { PlatformBadge } from "@/components/PlatformBadge";
@@ -34,6 +35,7 @@ export default function Posts() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { period, customStart, customEnd } = usePeriod();
+  const { isAdmin } = useAuth();
 
   async function load() {
     const { data } = await supabase
@@ -83,9 +85,11 @@ export default function Posts() {
           </div>
           <p className="text-muted-foreground text-sm">{posts.length} posts cadastrados</p>
         </div>
-        <Button asChild className="gradient-primary text-white border-0 glow-blue">
-          <Link to="/posts/new"><Plus className="w-4 h-4 mr-2" /> Novo Post</Link>
-        </Button>
+        {isAdmin && (
+          <Button asChild className="gradient-primary text-white border-0 glow-blue">
+            <Link to="/posts/new"><Plus className="w-4 h-4 mr-2" /> Novo Post</Link>
+          </Button>
+        )}
       </div>
 
       <div className="flex items-center gap-2 mb-6 flex-wrap">
@@ -124,7 +128,7 @@ export default function Posts() {
         <div className="text-center py-20">
           <FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
           <p className="text-muted-foreground mb-4">{search ? "Nenhum resultado." : "Nenhum post cadastrado ainda."}</p>
-          {!search && <Button asChild className="gradient-primary text-white border-0"><Link to="/posts/new">Cadastrar primeiro post</Link></Button>}
+          {!search && isAdmin && <Button asChild className="gradient-primary text-white border-0"><Link to="/posts/new">Cadastrar primeiro post</Link></Button>}
         </div>
       ) : (
         <div className="space-y-3">
@@ -172,31 +176,33 @@ export default function Posts() {
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
                     <div className="text-right">
                       <p className="text-2xl font-bold gradient-text">{post.score.toFixed(0)}</p>
                       <p className="text-xs text-muted-foreground">pontos</p>
                     </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-primary" onClick={() => navigate(`/posts/${post.id}/edit`)}>
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="w-8 h-8 text-destructive hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="bg-card border-border">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Remover post?</AlertDialogTitle>
-                            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deletePost(post.id)} className="bg-destructive text-destructive-foreground">Remover</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-primary" onClick={() => navigate(`/posts/${post.id}/edit`)}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="w-8 h-8 text-destructive hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="bg-card border-border">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remover post?</AlertDialogTitle>
+                              <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deletePost(post.id)} className="bg-destructive text-destructive-foreground">Remover</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -38,6 +39,7 @@ const emptyForm: SpaceForm = {
 export default function ScoreSpaces() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSpace, setEditingSpace] = useState<ScoreSpace | null>(null);
@@ -136,10 +138,12 @@ export default function ScoreSpaces() {
             Acesse os espaços abaixo para começar a pontuar
           </p>
         </div>
-        <Button onClick={openCreate} className="flex items-center gap-2 shrink-0">
-          <Plus className="w-4 h-4" />
-          Novo Espaço
-        </Button>
+        {isAdmin && (
+          <Button onClick={openCreate} className="flex items-center gap-2 shrink-0">
+            <Plus className="w-4 h-4" />
+            Novo Espaço
+          </Button>
+        )}
       </div>
 
       {/* Loading */}
@@ -160,13 +164,15 @@ export default function ScoreSpaces() {
           <div>
             <p className="text-foreground font-semibold">Nenhum espaço criado ainda</p>
             <p className="text-muted-foreground text-sm mt-1">
-              Clique em "Novo Espaço" para adicionar o primeiro link de pontuação
+              {isAdmin ? 'Clique em "Novo Espaço" para adicionar o primeiro link de pontuação' : "Nenhum espaço disponível no momento."}
             </p>
           </div>
-          <Button onClick={openCreate} variant="outline">
-            <Plus className="w-4 h-4 mr-2" />
-            Criar primeiro espaço
-          </Button>
+          {isAdmin && (
+            <Button onClick={openCreate} variant="outline">
+              <Plus className="w-4 h-4 mr-2" />
+              Criar primeiro espaço
+            </Button>
+          )}
         </div>
       )}
 
@@ -199,24 +205,26 @@ export default function ScoreSpaces() {
                     {space.button_label}
                   </Button>
                 </a>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                    onClick={() => openEdit(space)}
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    onClick={() => setDeleteTarget(space)}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
+                {isAdmin && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      onClick={() => openEdit(space)}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleteTarget(space)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                )}
               </CardFooter>
             </Card>
           ))}

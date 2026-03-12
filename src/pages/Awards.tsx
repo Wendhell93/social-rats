@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Member } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -449,6 +450,7 @@ function AwardFormDialog({
 
 export default function Awards() {
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
   const [activeAward, setActiveAward] = useState<Award | null>(null);
   const [activePrizes, setActivePrizes] = useState<AwardPrize[]>([]);
   const [pastAwards, setPastAwards] = useState<Award[]>([]);
@@ -571,10 +573,12 @@ export default function Awards() {
             Desafios ativos e histórico de vencedores
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} disabled={!!activeAward && activeAward.is_active && !dialogOpen}>
-          <Plus className="w-4 h-4 mr-2" />
-          Novo desafio
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setDialogOpen(true)} disabled={!!activeAward && activeAward.is_active && !dialogOpen}>
+            <Plus className="w-4 h-4 mr-2" />
+            Novo desafio
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -637,25 +641,27 @@ export default function Awards() {
                         <p className="text-sm text-muted-foreground">{activeAward.description}</p>
                       )}
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDialogOpen(true)}
-                      >
-                        <Pencil className="w-3.5 h-3.5 mr-1.5" />
-                        Editar
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        disabled={closingId === activeAward.id}
-                        onClick={handleCloseCompetition}
-                      >
-                        <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
-                        {closingId ? "Encerrando…" : "Encerrar"}
-                      </Button>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDialogOpen(true)}
+                        >
+                          <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                          Editar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={closingId === activeAward.id}
+                          onClick={handleCloseCompetition}
+                        >
+                          <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                          {closingId ? "Encerrando…" : "Encerrar"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardHeader>
 
@@ -730,9 +736,11 @@ export default function Awards() {
               <CardContent className="flex flex-col items-center py-12 gap-3">
                 <Trophy className="w-10 h-10 text-muted-foreground/40" />
                 <p className="text-muted-foreground text-sm">Nenhum desafio ativo no momento.</p>
-                <Button variant="outline" onClick={() => setDialogOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" /> Criar desafio
-                </Button>
+                {isAdmin && (
+                  <Button variant="outline" onClick={() => setDialogOpen(true)}>
+                    <Plus className="w-4 h-4 mr-2" /> Criar desafio
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}

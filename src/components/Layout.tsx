@@ -1,35 +1,30 @@
-import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, FileText, Trophy, Gift, Star, BookOpen, Settings } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { LayoutDashboard, Users, FileText, Trophy, Gift, Star, BookOpen, Settings, LogIn, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PeriodSelector } from "@/components/PeriodSelector";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
 const RatIcon = () => (
   <svg viewBox="0 0 64 64" className="w-5 h-5" fill="currentColor" style={{ color: "white" }}>
-    {/* body */}
     <ellipse cx="26" cy="40" rx="18" ry="13" />
-    {/* head */}
     <circle cx="44" cy="30" r="10" />
-    {/* ear */}
     <circle cx="40" cy="20" r="5" opacity="0.7" />
     <circle cx="40" cy="20" r="2.5" opacity="0.4" style={{ fill: "#ffaacc" }} />
-    {/* eye */}
     <circle cx="48" cy="27" r="1.8" fill="black" />
     <circle cx="48.6" cy="26.4" r="0.6" fill="white" />
-    {/* nose */}
     <ellipse cx="54" cy="30" rx="1.5" ry="1" fill="#ffaacc" />
-    {/* whiskers */}
     <line x1="54" y1="29" x2="63" y2="26" stroke="white" strokeWidth="1" />
     <line x1="54" y1="30" x2="63" y2="30" stroke="white" strokeWidth="1" />
     <line x1="54" y1="31" x2="63" y2="34" stroke="white" strokeWidth="1" />
-    {/* tail */}
     <path d="M8 45 Q2 50 4 58 Q6 62 10 60" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-    {/* legs */}
     <ellipse cx="18" cy="52" rx="5" ry="2.5" />
     <ellipse cx="32" cy="53" rx="5" ry="2.5" />
   </svg>
 );
 
-const navItems = [
+const baseNavItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/creators", icon: Users, label: "Criadores" },
   { to: "/posts", icon: FileText, label: "Conteúdos" },
@@ -37,11 +32,21 @@ const navItems = [
   { to: "/awards", icon: Gift, label: "Premiações" },
   { to: "/quero-pontuar", icon: Star, label: "Quero Pontuar" },
   { to: "/escola-de-criacao", icon: BookOpen, label: "Escola de criação" },
-  { to: "/settings", icon: Settings, label: "Configurações" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isAdmin, signOut } = useAuth();
+
+  const navItems = isAdmin
+    ? [...baseNavItems, { to: "/settings", icon: Settings, label: "Configurações" }]
+    : baseNavItems;
+
+  async function handleSignOut() {
+    await signOut();
+    navigate("/");
+  }
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -79,12 +84,43 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="px-4 py-4 border-t border-sidebar-border">
-          <p className="text-xs text-muted-foreground text-center">Rastreamento manual</p>
+          {isAdmin && user ? (
+            <div className="flex items-center gap-2">
+              <Avatar className="w-7 h-7 flex-shrink-0">
+                <AvatarImage src={user.user_metadata?.avatar_url} />
+                <AvatarFallback className="text-xs bg-primary/20 text-primary">
+                  {(user.user_metadata?.full_name || user.email || "A").slice(0, 1).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-foreground truncate">
+                  {user.user_metadata?.full_name || "Admin"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Administrador</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground flex-shrink-0"
+                onClick={handleSignOut}
+                title="Sair"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <Link
+              to="/login"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              Entrar como admin
+            </Link>
+          )}
         </div>
       </aside>
 
       <main className="flex-1 overflow-auto min-h-screen">
-        {/* Period selector bar for dashboard and ranking */}
         {(["/", "/ranking"].includes(location.pathname)) && (
           <div className="flex items-center justify-end gap-2 px-8 pt-6 pb-0">
             <PeriodSelector />
