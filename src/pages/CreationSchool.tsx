@@ -39,6 +39,7 @@ const emptyForm: SpaceForm = {
 export default function CreationSchool() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSpace, setEditingSpace] = useState<CreationSchoolSpace | null>(null);
