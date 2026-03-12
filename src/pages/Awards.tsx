@@ -450,6 +450,7 @@ function AwardFormDialog({
 
 export default function Awards() {
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
   const [activeAward, setActiveAward] = useState<Award | null>(null);
   const [activePrizes, setActivePrizes] = useState<AwardPrize[]>([]);
   const [pastAwards, setPastAwards] = useState<Award[]>([]);
