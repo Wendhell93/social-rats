@@ -736,9 +736,11 @@ export default function Awards() {
               <CardContent className="flex flex-col items-center py-12 gap-3">
                 <Trophy className="w-10 h-10 text-muted-foreground/40" />
                 <p className="text-muted-foreground text-sm">Nenhum desafio ativo no momento.</p>
-                <Button variant="outline" onClick={() => setDialogOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" /> Criar desafio
-                </Button>
+                {isAdmin && (
+                  <Button variant="outline" onClick={() => setDialogOpen(true)}>
+                    <Plus className="w-4 h-4 mr-2" /> Criar desafio
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}
