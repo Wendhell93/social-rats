@@ -164,13 +164,15 @@ export default function CreationSchool() {
           <div>
             <p className="text-foreground font-semibold">Nenhum recurso criado ainda</p>
             <p className="text-muted-foreground text-sm mt-1">
-              Clique em "Novo Recurso" para adicionar o primeiro material de criação
+              {isAdmin ? 'Clique em "Novo Recurso" para adicionar o primeiro material de criação' : "Nenhum recurso disponível no momento."}
             </p>
           </div>
-          <Button onClick={openCreate} variant="outline">
-            <Plus className="w-4 h-4 mr-2" />
-            Criar primeiro recurso
-          </Button>
+          {isAdmin && (
+            <Button onClick={openCreate} variant="outline">
+              <Plus className="w-4 h-4 mr-2" />
+              Criar primeiro recurso
+            </Button>
+          )}
         </div>
       )}
 
