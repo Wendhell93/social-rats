@@ -12,6 +12,7 @@ import EditPost from "./pages/EditPost";
 import Ranking from "./pages/Ranking";
 import Awards from "./pages/Awards";
 import Settings from "./pages/Settings";
+import ScoreSpaces from "./pages/ScoreSpaces";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/posts/:id/edit" element={<EditPost />} />
           <Route path="/ranking" element={<Ranking />} />
           <Route path="/awards" element={<Awards />} />
+          <Route path="/quero-pontuar" element={<ScoreSpaces />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

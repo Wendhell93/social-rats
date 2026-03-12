@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, FileText, Trophy, Gift, Settings } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Trophy, Gift, Star, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PeriodSelector } from "@/components/PeriodSelector";
 
@@ -35,6 +35,7 @@ const navItems = [
   { to: "/posts", icon: FileText, label: "Conteúdos" },
   { to: "/ranking", icon: Trophy, label: "Ranking" },
   { to: "/awards", icon: Gift, label: "Premiações" },
+  { to: "/quero-pontuar", icon: Star, label: "Quero Pontuar" },
   { to: "/settings", icon: Settings, label: "Configurações" },
 ];
 
