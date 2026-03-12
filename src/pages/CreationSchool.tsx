@@ -138,10 +138,12 @@ export default function CreationSchool() {
             Acesse os recursos abaixo para evoluir como criador
           </p>
         </div>
-        <Button onClick={openCreate} className="flex items-center gap-2 shrink-0">
-          <Plus className="w-4 h-4" />
-          Novo Recurso
-        </Button>
+        {isAdmin && (
+          <Button onClick={openCreate} className="flex items-center gap-2 shrink-0">
+            <Plus className="w-4 h-4" />
+            Novo Recurso
+          </Button>
+        )}
       </div>
 
       {/* Loading */}

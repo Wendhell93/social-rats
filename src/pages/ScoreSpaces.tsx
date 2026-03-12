@@ -138,10 +138,12 @@ export default function ScoreSpaces() {
             Acesse os espaços abaixo para começar a pontuar
           </p>
         </div>
-        <Button onClick={openCreate} className="flex items-center gap-2 shrink-0">
-          <Plus className="w-4 h-4" />
-          Novo Espaço
-        </Button>
+        {isAdmin && (
+          <Button onClick={openCreate} className="flex items-center gap-2 shrink-0">
+            <Plus className="w-4 h-4" />
+            Novo Espaço
+          </Button>
+        )}
       </div>
 
       {/* Loading */}
