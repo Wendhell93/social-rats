@@ -120,7 +120,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin, signOut } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [topMenuOpen, setTopMenuOpen] = useState(false);
+  const [bottomMenuOpen, setBottomMenuOpen] = useState(false);
 
   const navItems = isAdmin
     ? [...baseNavItems, { to: "/settings", icon: Settings, label: "Configurações" }]
