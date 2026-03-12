@@ -573,10 +573,12 @@ export default function Awards() {
             Desafios ativos e histórico de vencedores
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} disabled={!!activeAward && activeAward.is_active && !dialogOpen}>
-          <Plus className="w-4 h-4 mr-2" />
-          Novo desafio
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setDialogOpen(true)} disabled={!!activeAward && activeAward.is_active && !dialogOpen}>
+            <Plus className="w-4 h-4 mr-2" />
+            Novo desafio
+          </Button>
+        )}
       </div>
 
       {loading ? (
