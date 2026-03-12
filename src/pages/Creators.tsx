@@ -136,9 +136,11 @@ export default function Creators() {
           </div>
           <p className="text-muted-foreground text-sm">{creators.length} criadores cadastrados</p>
         </div>
-        <Button onClick={openNew} className="gradient-primary text-white border-0 glow-blue">
-          <Plus className="w-4 h-4 mr-2" /> Novo Criador
-        </Button>
+        {isAdmin && (
+          <Button onClick={openNew} className="gradient-primary text-white border-0 glow-blue">
+            <Plus className="w-4 h-4 mr-2" /> Novo Criador
+          </Button>
+        )}
       </div>
 
       <div className="relative mb-6">
