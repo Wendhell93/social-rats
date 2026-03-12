@@ -49,8 +49,8 @@ export default function CreatorProfile() {
     load();
   }, [id]);
 
-  if (loading) return <div className="p-8"><div className="h-40 bg-card rounded-xl animate-pulse" /></div>;
-  if (!creator) return <div className="p-8 text-muted-foreground">Criador não encontrado.</div>;
+  if (loading) return <div className="p-4 md:p-8"><div className="h-40 bg-card rounded-xl animate-pulse" /></div>;
+  if (!creator) return <div className="p-4 md:p-8 text-muted-foreground">Criador não encontrado.</div>;
 
   const totalScore = posts.reduce((a, p) => a + (p.score || 0), 0);
   const totalLikes = posts.reduce((a, p) => a + (p.likes || 0), 0);
