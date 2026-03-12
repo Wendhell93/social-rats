@@ -211,7 +211,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         })}
 
         {/* "Mais" tab */}
-        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <Sheet open={bottomMenuOpen} onOpenChange={setBottomMenuOpen}>
           <SheetTrigger asChild>
             <button
               className={cn(
@@ -228,7 +228,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <SheetContent side="bottom" className="rounded-t-2xl border-t border-sidebar-border pb-safe" style={{ background: "hsl(225 28% 6%)" }}>
             <div className="pt-2 pb-1">
               <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
-              <div className="space-y-1 px-2" onClick={() => setMobileMenuOpen(false)}>
+              <div className="space-y-1 px-2" onClick={() => setBottomMenuOpen(false)}>
                 {moreItems.map(({ to, icon: Icon, label }) => {
                   const active = to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
                   return (
