@@ -32,6 +32,7 @@ export default function Creators() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
 
   async function load() {
     const [{ data: members }, { data: pc }] = await Promise.all([
