@@ -164,7 +164,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* "Mais" sheet trigger (hamburger) */}
-        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <Sheet open={topMenuOpen} onOpenChange={setTopMenuOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
               <Menu className="w-5 h-5" />
@@ -174,7 +174,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="px-6 py-5 border-b border-sidebar-border">
               <p className="text-sm font-bold text-foreground">Menu</p>
             </div>
-            <div className="flex flex-col h-[calc(100%-57px)]" onClick={() => setMobileMenuOpen(false)}>
+            <div className="flex flex-col h-[calc(100%-57px)]" onClick={() => setTopMenuOpen(false)}>
               <SidebarContent navItems={navItems} user={user} isAdmin={isAdmin} onSignOut={handleSignOut} />
             </div>
           </SheetContent>
