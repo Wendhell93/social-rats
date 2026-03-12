@@ -35,6 +35,7 @@ export default function Posts() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { period, customStart, customEnd } = usePeriod();
+  const { isAdmin } = useAuth();
 
   async function load() {
     const { data } = await supabase
