@@ -1,64 +1,74 @@
 
-## Análise completa do app — Sugestões de melhoria
+## Sistema de admin + login com Google
 
-Analisei todas as páginas: Dashboard, Ranking, Posts, Criadores, Perfil do Criador, Novo Post e Editar Post. Aqui estão as principais oportunidades organizadas por impacto.
+### Visão geral
 
----
-
-### UX / Usabilidade
-
-**1. Filtro de período na aba Posts**
-Hoje o filtro de período existe no Dashboard e Ranking, mas a listagem de Posts não tem filtro nenhum (apenas busca por texto). Com muitos posts, fica difícil visualizar por período.
-
-**2. Ranking mostra todos os criadores, mesmo com 0 pontos**
-O ranking exibe criadores sem nenhum post no período, o que polui a lista. Deveria ocultar quem não tem pontos ou mostrar separado.
-
-**3. EditPost não tem campo de data de publicação**
-O formulário de Novo Post tem campo de data, mas o de Edição não. Se a data foi esquecida ou errada, não dá para corrigir.
-
-**4. Exclusão de criador sem confirmação**
-O botão "✕" na lista de criadores não tem nenhum `AlertDialog` de confirmação — diferente da exclusão de posts que tem. Pode causar exclusões acidentais.
-
-**5. Criadores sem score visível na listagem**
-Os cards de criadores não mostram o score total acumulado. O usuário precisa entrar no perfil para ver. Exibir o score diretamente no card daria uma visão imediata.
+Implementar autenticação Google para o admin usando o sistema nativo (Lovable Cloud Managed Google OAuth). Quando logado como admin, o menu mostra o item "Configurações" e os botões de criar/editar/excluir aparecem em todas as páginas. Quando não logado, tudo fica apenas leitura.
 
 ---
 
-### Funcionalidade
+### O que muda em cada lugar
 
-**6. Fórmula de score visível**
-As configurações têm os pesos, mas em nenhum lugar do app é explicado como o score é calculado. Um tooltip ou linha explicativa em "Métricas" (ex: "Score = 1×curtidas + 3×comentários + 5×compartilhamentos + 2×salvamentos") ajudaria muito.
+**Menu lateral (`Layout.tsx`)**
+- Adicionar botão "Entrar como admin" no rodapé (quando não logado)
+- Quando logado: trocar pelo avatar do usuário Google + botão "Sair"
+- Item "Configurações" só aparece quando logado como admin
 
-**7. Página de Settings — configurações básicas do app**
-A rota `/settings` existe mas não foi analisada. Se estiver vazia ou só com pesos, poderia ganhar o título do ranking, nome da equipe, etc.
+**Proteção de rotas**
+- `/settings`, `/posts/new`, `/posts/:id/edit` → redireciona para `/login` se não for admin
+- Todas as outras rotas continuam públicas
 
-**8. Permalink do criador no ranking**
-Os nomes no ranking não são clicáveis para ir ao perfil. Só o Dashboard tem esse link.
-
-**9. Ordenação e filtros na listagem de Posts**
-Além da busca por texto, adicionar ordenação (mais recente, maior score, plataforma) tornaria o gerenciamento muito mais prático.
+**Botões condicionais (visíveis só se admin)**
+- `Posts.tsx`: botões "+ Novo Post", editar (lápis) e excluir (lixeira)
+- `Creators.tsx` / `CreatorProfile.tsx`: botões de criar/editar/excluir criador
+- `Awards.tsx`: botões de criar/editar desafio e premiação
+- `ScoreSpaces.tsx`: botões "+ Novo Espaço", editar e excluir
+- `CreationSchool.tsx`: botões "+ Novo Recurso", editar e excluir
 
 ---
 
-### Proposta de implementação por prioridade
+### Arquivos a criar/modificar
 
-```
-ALTA PRIORIDADE (impacto imediato)
-├── Confirmação ao excluir criador
-├── Campo de data na edição de post
-├── Ranking clicável para perfil do criador
-└── Ocultar criadores com 0 pontos no ranking (ou destacar)
+| Arquivo | Ação |
+|---|---|
+| `src/contexts/AuthContext.tsx` | Novo contexto com `user`, `isAdmin`, `signInWithGoogle`, `signOut` |
+| `src/pages/Login.tsx` | Tela de login com botão "Entrar com Google" |
+| `src/components/AdminRoute.tsx` | Wrapper que redireciona para `/login` se não for admin |
+| `src/components/Layout.tsx` | Ocultar "Configurações", botão login/logout no rodapé |
+| `src/App.tsx` | Envolver `AuthProvider`, adicionar rota `/login`, proteger `/settings`, `/posts/new`, `/posts/:id/edit` |
+| `src/pages/Posts.tsx` | Ocultar botões de CRUD se não for admin |
+| `src/pages/Creators.tsx` | Ocultar botões de CRUD se não for admin |
+| `src/pages/CreatorProfile.tsx` | Ocultar botões de CRUD se não for admin |
+| `src/pages/Awards.tsx` | Ocultar botões de criar/editar desafio se não for admin |
+| `src/pages/ScoreSpaces.tsx` | Ocultar botões de CRUD se não for admin |
+| `src/pages/CreationSchool.tsx` | Ocultar botões de CRUD se não for admin |
 
-MÉDIA PRIORIDADE (melhora produtividade)
-├── Score visível no card de criador
-├── Tooltip da fórmula de score em Novo/Editar Post
-└── Ordenação na listagem de Posts
+---
 
-BAIXA PRIORIDADE (refinamento)
-└── Filtro de período na listagem de Posts
+### Fluxo de login
+
+```text
+[Qualquer página] → clica "Entrar como admin" no rodapé do menu
+  → /login → botão "Entrar com Google"
+    → popup Google OAuth
+      → retorna logado → redireciona para a página anterior
+        → menu mostra "Configurações" + botões de edição aparecem
 ```
 
 ---
 
-**O que você quer implementar?**
-Posso fazer tudo de uma vez ou em partes — me diga o que tem mais urgência ou aprove o plano completo.
+### AuthContext
+
+```typescript
+// Expõe:
+const { user, isAdmin, signInWithGoogle, signOut } = useAuth();
+// isAdmin = !!user (qualquer usuário logado é admin)
+// Não há tabela de roles separada — login = admin
+```
+
+> Como o app não tem cadastro público, qualquer conta que logar via Google é tratada como admin. Simples e seguro.
+
+---
+
+### Banco de dados
+Nenhuma migração necessária. Usaremos apenas o Supabase Auth nativo (Google OAuth gerenciado pelo Lovable Cloud).
