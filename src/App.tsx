@@ -13,6 +13,7 @@ import Ranking from "./pages/Ranking";
 import Awards from "./pages/Awards";
 import Settings from "./pages/Settings";
 import ScoreSpaces from "./pages/ScoreSpaces";
+import CreationSchool from "./pages/CreationSchool";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
