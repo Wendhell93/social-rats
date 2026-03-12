@@ -127,8 +127,8 @@ export default function Creators() {
   );
 
   return (
-    <div className="p-8 animate-fade-in">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 md:p-8 animate-fade-in">
+      <div className="flex items-center justify-between mb-6 md:mb-8">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Users className="w-5 h-5 text-primary" />

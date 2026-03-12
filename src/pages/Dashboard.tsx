@@ -83,8 +83,8 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-8 animate-fade-in">
-      <div className="mb-8">
+    <div className="p-4 md:p-8 animate-fade-in">
+      <div className="mb-6 md:mb-8">
         <div className="flex items-center gap-2 mb-1">
           <LayoutDashboard className="w-5 h-5 text-primary" />
           <h1 className="text-2xl font-bold">Dashboard</h1>

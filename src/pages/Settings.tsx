@@ -188,7 +188,7 @@ export default function Settings() {
   const exampleStoriesScore = (5000 * storiesForm.views_pico_weight + 80 * storiesForm.interactions_weight + 15 * storiesForm.forwards_weight + 10 * storiesForm.cta_clicks_weight);
 
   return (
-    <div className="p-8 max-w-xl">
+    <div className="p-4 md:p-8 max-w-xl">
       <div className="mb-8">
         <h1 className="text-2xl font-bold">Configurações</h1>
         <p className="text-muted-foreground text-sm mt-1">Pesos de engajamento, multiplicadores e administradores</p>
