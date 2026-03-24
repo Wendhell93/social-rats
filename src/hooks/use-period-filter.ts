@@ -1,28 +1,34 @@
-import { useMemo } from "react";
+import { useCallback } from "react";
 import { subDays, startOfMonth, isAfter, parseISO, isWithinInterval } from "date-fns";
 import { usePeriod } from "@/contexts/PeriodContext";
 
-/**
- * Returns a predicate function that checks whether a date string falls within
- * the currently selected period.
- */
 export function usePeriodFilter() {
   const { period, customStart, customEnd } = usePeriod();
 
-  const inPeriod = useMemo(
-    () =>
-      (dateStr: string): boolean => {
-        const now = new Date();
-        const date = parseISO(dateStr);
-        if (period === "7d") return isAfter(date, subDays(now, 7));
-        if (period === "30d") return isAfter(date, subDays(now, 30));
-        if (period === "month") return isAfter(date, startOfMonth(now));
-        if (period === "custom" && customStart && customEnd)
-          return isWithinInterval(date, { start: customStart, end: customEnd });
-        return true;
-      },
+  const inPeriod = useCallback(
+    (dateStr: string): boolean => {
+      const now = new Date();
+      const date = parseISO(dateStr);
+
+      switch (period) {
+        case "7d":
+          return isAfter(date, subDays(now, 7));
+        case "30d":
+          return isAfter(date, subDays(now, 30));
+        case "month":
+          return isAfter(date, startOfMonth(now));
+        case "custom":
+          if (customStart && customEnd) {
+            return isWithinInterval(date, { start: customStart, end: customEnd });
+          }
+          return true;
+        case "all":
+        default:
+          return true;
+      }
+    },
     [period, customStart, customEnd]
   );
 
-  return { inPeriod };
+  return { inPeriod, period, customStart, customEnd };
 }

@@ -3,8 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { LayoutDashboard, Users, FileText, Trophy, TrendingUp, Heart, MessageCircle, Share2, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { subDays, startOfMonth, isAfter, parseISO, isWithinInterval } from "date-fns";
-import { usePeriod } from "@/contexts/PeriodContext";
+import { usePeriodFilter } from "@/hooks/use-period-filter";
 
 type PostRow = { id: string; score: number; likes: number; comments: number; shares: number; saves: number; created_at: string };
 type PostCreatorRow = { creator_id: string; post: { id: string; score: number; created_at: string } | null };
@@ -16,7 +15,7 @@ export default function Dashboard() {
   const [allPostCreators, setAllPostCreators] = useState<PostCreatorRow[]>([]);
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const { period, customStart, customEnd } = usePeriod();
+  const { inPeriod } = usePeriodFilter();
 
   useEffect(() => {
     async function load() {
@@ -33,18 +32,8 @@ export default function Dashboard() {
     load();
   }, []);
 
-  function inPeriod(created_at: string) {
-    const now = new Date();
-    const date = parseISO(created_at);
-    if (period === "7d") return isAfter(date, subDays(now, 7));
-    if (period === "30d") return isAfter(date, subDays(now, 30));
-    if (period === "month") return isAfter(date, startOfMonth(now));
-    if (period === "custom" && customStart && customEnd) return isWithinInterval(date, { start: customStart, end: customEnd });
-    return true;
-  }
-
-  const filteredPosts = useMemo(() => allPosts.filter(p => inPeriod(p.created_at)), [allPosts, period, customStart, customEnd]);
-  const filteredPc = useMemo(() => allPostCreators.filter(pc => pc.post && inPeriod(pc.post.created_at)), [allPostCreators, period, customStart, customEnd]);
+  const filteredPosts = useMemo(() => allPosts.filter(p => inPeriod(p.created_at)), [allPosts, inPeriod]);
+  const filteredPc = useMemo(() => allPostCreators.filter(pc => pc.post && inPeriod(pc.post.created_at)), [allPostCreators, inPeriod]);
 
   const stats = useMemo(() => ({
     creators: members.length,

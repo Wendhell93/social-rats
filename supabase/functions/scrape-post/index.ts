@@ -3,133 +3,169 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+interface ScrapeResult {
+  success: boolean;
+  scraped: boolean;
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+  views: number;
+  title: string | null;
+  thumbnail_url: string | null;
+  scrape_error?: string;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { url } = await req.json();
+    const { url, platform } = await req.json();
 
     if (!url) {
-      return new Response(JSON.stringify({ success: false, error: 'URL obrigatória' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ success: false, error: 'URL obrigatória' }, 400);
     }
 
-    const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
+    const apiKey = Deno.env.get('SOCIAVAULT_API_KEY');
     if (!apiKey) {
-      return new Response(JSON.stringify({ success: false, error: 'Firecrawl não configurado' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      console.error('SOCIAVAULT_API_KEY not configured');
+      return jsonResponse(manualFallback('SociaVault API key não configurada. Configure o secret SOCIAVAULT_API_KEY.'));
     }
 
-    console.log('Scraping:', url);
+    const headers = {
+      'x-api-key': apiKey,
+      'Content-Type': 'application/json',
+    };
 
-    const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        url,
-        formats: ['markdown', 'html'],
-        onlyMainContent: false,
-        waitFor: 3000,
-      }),
-    });
+    let result: ScrapeResult;
 
-    const data = await response.json();
-    console.log('Firecrawl response status:', response.status);
-
-    if (!response.ok) {
-      console.error('Firecrawl error:', data);
-      // Retorna 200 com scraped=false para o frontend exibir formulário manual
-      return new Response(JSON.stringify({
-        success: true,
-        scraped: false,
-        likes: 0, comments: 0, shares: 0, saves: 0,
-        title: null, thumbnail_url: null,
-        scrape_error: data.error || `Status ${response.status}`,
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (platform === 'instagram') {
+      result = await scrapeInstagram(url, headers);
+    } else if (platform === 'tiktok') {
+      result = await scrapeTikTok(url, headers);
+    } else {
+      return jsonResponse(manualFallback(`Scraping não suportado para "${platform}". Preencha manualmente.`));
     }
 
-    const content = data.data?.markdown || data.markdown || '';
-    const html = data.data?.html || data.html || '';
-    const metadata = data.data?.metadata || data.metadata || {};
-
-    // Extrair métricas do conteúdo
-    const metrics = extractMetrics(content, html, url);
-
-    return new Response(JSON.stringify({
-      success: true,
-      title: metadata.title || metadata.ogTitle || null,
-      thumbnail_url: metadata.ogImage || null,
-      ...metrics,
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
+    return jsonResponse(result);
   } catch (error) {
     console.error('Error:', error);
     const msg = error instanceof Error ? error.message : 'Erro desconhecido';
-    return new Response(JSON.stringify({ success: false, error: msg }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse(manualFallback(msg));
   }
 });
 
-function extractMetrics(markdown: string, _html: string, url: string) {
-  const text = markdown.toLowerCase();
+// ─── Instagram ────────────────────────────────────────────────────────────────
 
-  // Padrões para extrair números de engajamento
-  const patterns = {
-    likes: [
-      /(\d[\d,\.k]*)\s*(?:curtidas?|likes?|❤️|👍)/i,
-      /(?:curtidas?|likes?)[:\s]+(\d[\d,\.k]*)/i,
-    ],
-    comments: [
-      /(\d[\d,\.k]*)\s*(?:comentários?|comments?|💬)/i,
-      /(?:comentários?|comments?)[:\s]+(\d[\d,\.k]*)/i,
-    ],
-    shares: [
-      /(\d[\d,\.k]*)\s*(?:compartilhamentos?|shares?|retweets?)/i,
-      /(?:compartilhamentos?|shares?)[:\s]+(\d[\d,\.k]*)/i,
-    ],
-    saves: [
-      /(\d[\d,\.k]*)\s*(?:salvamentos?|saves?|bookmarks?|🔖)/i,
-      /(?:salvamentos?|saves?)[:\s]+(\d[\d,\.k]*)/i,
-    ],
-  };
+async function scrapeInstagram(url: string, headers: Record<string, string>): Promise<ScrapeResult> {
+  const apiUrl = `https://api.sociavault.com/v1/scrape/instagram/post-info?url=${encodeURIComponent(url)}&trim=true`;
 
-  const result = { likes: 0, comments: 0, shares: 0, saves: 0 };
+  console.log('Scraping Instagram:', url);
+  const response = await fetch(apiUrl, { method: 'GET', headers });
 
-  for (const [key, patternList] of Object.entries(patterns)) {
-    for (const pattern of patternList) {
-      const match = text.match(pattern);
-      if (match) {
-        result[key as keyof typeof result] = parseEngagementNumber(match[1]);
-        break;
-      }
-    }
+  if (!response.ok) {
+    const text = await response.text();
+    console.error('SociaVault Instagram error:', response.status, text);
+    return manualFallback(`SociaVault retornou status ${response.status}`);
   }
 
-  // Se o scraping não encontrou nada, retornar zeros com flag de manual
-  const found = Object.values(result).some(v => v > 0);
-  return { ...result, scraped: found };
+  const json = await response.json();
+
+  const media = json?.data?.data?.xdt_shortcode_media
+    ?? json?.data?.xdt_shortcode_media
+    ?? null;
+
+  if (!media) {
+    console.error('Instagram: unexpected response structure', JSON.stringify(json).slice(0, 500));
+    return manualFallback('Resposta inesperada da API do Instagram');
+  }
+
+  const likes = media.edge_media_preview_like?.count ?? media.like_count ?? 0;
+  const comments = media.edge_media_to_parent_comment?.count ?? media.comment_count ?? 0;
+  const shares = 0;
+  const saves = 0;
+  const views = media.video_play_count ?? media.video_view_count ?? 0;
+
+  const caption = media.edge_media_to_caption?.edges?.[0]?.node?.text
+    ?? media.edge_media_to_caption?.edges?.["0"]?.node?.text
+    ?? null;
+
+  const thumbnail = media.display_url ?? media.thumbnail_src ?? null;
+
+  return {
+    success: true,
+    scraped: true,
+    likes,
+    comments,
+    shares,
+    saves,
+    views,
+    title: caption ? caption.slice(0, 200) : null,
+    thumbnail_url: thumbnail,
+  };
 }
 
-function parseEngagementNumber(str: string): number {
-  if (!str) return 0;
-  const clean = str.replace(/,/g, '').trim();
-  if (clean.toLowerCase().endsWith('k')) {
-    return Math.round(parseFloat(clean) * 1000);
+// ─── TikTok ───────────────────────────────────────────────────────────────────
+
+async function scrapeTikTok(url: string, headers: Record<string, string>): Promise<ScrapeResult> {
+  const apiUrl = `https://api.sociavault.com/v1/scrape/tiktok/video-info?url=${encodeURIComponent(url)}`;
+
+  console.log('Scraping TikTok:', url);
+  const response = await fetch(apiUrl, { method: 'GET', headers });
+
+  if (!response.ok) {
+    const text = await response.text();
+    console.error('SociaVault TikTok error:', response.status, text);
+    return manualFallback(`SociaVault retornou status ${response.status}`);
   }
-  if (clean.toLowerCase().endsWith('m')) {
-    return Math.round(parseFloat(clean) * 1000000);
+
+  const json = await response.json();
+  const detail = json?.data?.aweme_detail ?? null;
+
+  if (!detail) {
+    console.error('TikTok: unexpected response structure', JSON.stringify(json).slice(0, 500));
+    return manualFallback('Resposta inesperada da API do TikTok');
   }
-  return parseInt(clean) || 0;
+
+  const stats = detail.statistics ?? {};
+
+  return {
+    success: true,
+    scraped: true,
+    likes: stats.digg_count ?? 0,
+    comments: stats.comment_count ?? 0,
+    shares: stats.share_count ?? 0,
+    saves: stats.collect_count ?? 0,
+    views: stats.play_count ?? 0,
+    title: detail.desc ? detail.desc.slice(0, 200) : null,
+    thumbnail_url: detail.video?.cover?.url_list?.[0]
+      ?? detail.video?.origin_cover?.url_list?.[0]
+      ?? null,
+  };
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function manualFallback(scrape_error: string): ScrapeResult {
+  return {
+    success: true,
+    scraped: false,
+    likes: 0,
+    comments: 0,
+    shares: 0,
+    saves: 0,
+    views: 0,
+    title: null,
+    thumbnail_url: null,
+    scrape_error,
+  };
+}
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
 }

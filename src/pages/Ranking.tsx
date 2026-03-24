@@ -5,8 +5,7 @@ import { Member } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Trophy } from "lucide-react";
-import { subDays, startOfMonth, isAfter, parseISO, isWithinInterval } from "date-fns";
-import { usePeriod } from "@/contexts/PeriodContext";
+import { usePeriodFilter } from "@/hooks/use-period-filter";
 
 interface PostCreatorRow {
   creator_id: string;
@@ -27,7 +26,7 @@ export default function Ranking() {
   const [members, setMembers] = useState<Member[]>([]);
   const [postCreators, setPostCreators] = useState<PostCreatorRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const { period, customStart, customEnd } = usePeriod();
+  const { inPeriod } = usePeriodFilter();
 
   useEffect(() => {
     async function load() {
@@ -42,22 +41,7 @@ export default function Ranking() {
     load();
   }, []);
 
-  function filterPostCreators(rows: PostCreatorRow[]): PostCreatorRow[] {
-    const now = new Date();
-    return rows.filter((pc) => {
-      if (!pc.post) return false;
-      const date = parseISO(pc.post.created_at);
-      if (period === "7d") return isAfter(date, subDays(now, 7));
-      if (period === "30d") return isAfter(date, subDays(now, 30));
-      if (period === "month") return isAfter(date, startOfMonth(now));
-      if (period === "custom" && customStart && customEnd) {
-        return isWithinInterval(date, { start: customStart, end: customEnd });
-      }
-      return true;
-    });
-  }
-
-  const filtered = filterPostCreators(postCreators);
+  const filtered = postCreators.filter((pc) => pc.post && inPeriod(pc.post.created_at));
 
   const ranking: RankingEntry[] = members
     .map((m) => {

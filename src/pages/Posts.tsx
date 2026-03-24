@@ -14,14 +14,14 @@ import {
   Trash2, Pencil, CalendarDays, FileText, Eye, Repeat2, MousePointerClick
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { format, isAfter, subDays, startOfMonth, isWithinInterval, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { PeriodSelector } from "@/components/PeriodSelector";
-import { usePeriod } from "@/contexts/PeriodContext";
+import { usePeriodFilter } from "@/hooks/use-period-filter";
 
 type PostWithCreators = Post & { post_creators: { creator: Creator }[] };
 
@@ -34,7 +34,7 @@ export default function Posts() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { period, customStart, customEnd } = usePeriod();
+  const { inPeriod } = usePeriodFilter();
   const { isAdmin } = useAuth();
 
   async function load() {
@@ -62,14 +62,7 @@ export default function Posts() {
     );
     const matchPlatform = platformFilter === "all" || p.platform === platformFilter;
     const matchFormat = formatFilter === "all" || (p.format || "feed") === formatFilter;
-    const dateStr = p.posted_at || p.created_at;
-    const date = parseISO(dateStr);
-    const now = new Date();
-    let matchPeriod = true;
-    if (period === "7d") matchPeriod = isAfter(date, subDays(now, 7));
-    else if (period === "30d") matchPeriod = isAfter(date, subDays(now, 30));
-    else if (period === "month") matchPeriod = isAfter(date, startOfMonth(now));
-    else if (period === "custom" && customStart && customEnd) matchPeriod = isWithinInterval(date, { start: customStart, end: customEnd });
+    const matchPeriod = inPeriod(p.posted_at || p.created_at);
     return matchSearch && matchPlatform && matchFormat && matchPeriod;
   }).sort((a, b) => sortBy === "score" ? b.score - a.score : new Date(b.posted_at || b.created_at).getTime() - new Date(a.posted_at || a.created_at).getTime());
 

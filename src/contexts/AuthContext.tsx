@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 
 interface AuthContextType {
   user: User | null;
@@ -51,8 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function signInWithGoogle() {
-    await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
     });
   }
 

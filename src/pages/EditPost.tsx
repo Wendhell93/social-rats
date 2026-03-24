@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Post, Creator, EngagementWeights, ContentTypeMultipliers, StoriesWeights,
-  calcScore, calcScoreStories, getMultiplier, CONTENT_TYPE_LABELS, PostFormat
+  calcScore, calcScoreStories, getMultiplier, CONTENT_TYPE_LABELS, PostFormat, detectPlatform
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import {
   Heart, MessageCircle, Share2, Bookmark, Loader2, ArrowLeft,
-  Plus, X, CalendarIcon, Eye, Repeat2, MousePointerClick, Info
+  Plus, X, CalendarIcon, Eye, Repeat2, MousePointerClick, Info, Wand2, CheckCircle, AlertTriangle
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -21,6 +21,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ContentTypePicker } from "@/components/ContentTypePicker";
 import { FormatBadge } from "@/components/FormatBadge";
+import { scrapePost } from "@/lib/scrape";
 
 type PostWithCreators = Post & { post_creators: { id: string; creator: Creator }[] };
 
@@ -42,6 +43,37 @@ export default function EditPost() {
   const [creatorSearch, setCreatorSearch] = useState("");
   const [openDate, setOpenDate] = useState(false);
   const [contentType, setContentType] = useState<string | null>(null);
+  const [scraping, setScraping] = useState(false);
+  const [scrapeStatus, setScrapeStatus] = useState<"idle" | "success" | "manual">("idle");
+
+  async function handleScrape() {
+    if (!post) return;
+    const platform = detectPlatform(post.url);
+    if (!platform) return;
+    setScraping(true);
+    setScrapeStatus("idle");
+    try {
+      const data = await scrapePost(post.url, platform);
+      if (data.scraped) {
+        setMetrics({
+          likes: data.likes ?? 0,
+          comments: data.comments ?? 0,
+          shares: data.shares ?? 0,
+          saves: data.saves ?? 0,
+        });
+        setScrapeStatus("success");
+        toast({ title: "Métricas atualizadas!", description: "Confira os valores e salve." });
+      } else {
+        setScrapeStatus("manual");
+        toast({ title: "Não foi possível buscar métricas", description: data.scrape_error || "Atualize manualmente.", variant: "destructive" });
+      }
+    } catch (err: any) {
+      setScrapeStatus("manual");
+      toast({ title: "Erro ao buscar métricas", description: err?.message, variant: "destructive" });
+    } finally {
+      setScraping(false);
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -136,6 +168,35 @@ export default function EditPost() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold">Editar Post</h1>
         <p className="text-muted-foreground text-sm mt-1 truncate">{post.url}</p>
+        {(() => {
+          const plat = detectPlatform(post.url);
+          return (plat === "instagram" || plat === "tiktok") ? (
+            <div className="flex items-center gap-2 mt-3">
+              <Button
+                type="button"
+                size="sm"
+                variant={scrapeStatus === "success" ? "outline" : "default"}
+                className={cn(
+                  "text-xs gap-1.5",
+                  scrapeStatus === "idle" && "gradient-primary text-white border-0 glow-blue",
+                  scrapeStatus === "success" && "border-green-500/30 text-green-400 hover:text-green-300"
+                )}
+                disabled={scraping}
+                onClick={handleScrape}
+              >
+                {scraping ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> :
+                 scrapeStatus === "success" ? <CheckCircle className="w-3.5 h-3.5" /> :
+                 <Wand2 className="w-3.5 h-3.5" />}
+                {scraping ? "Buscando..." : scrapeStatus === "success" ? "Importado! Buscar novamente" : "Atualizar métricas via scraping"}
+              </Button>
+              {scrapeStatus === "manual" && (
+                <span className="text-xs text-amber-400 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" /> Atualize manualmente
+                </span>
+              )}
+            </div>
+          ) : null;
+        })()}
       </div>
 
       <div className="space-y-5">

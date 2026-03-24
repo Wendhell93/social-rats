@@ -113,10 +113,10 @@ export default function Settings() {
 
     toast({ title: "Configurações salvas!" });
 
-    // Recalculate all post scores
+    // Recalculate all post scores in parallel batches
     const { data: posts } = await supabase.from("posts").select("*");
     if (posts) {
-      for (const p of posts) {
+      const updates = posts.map((p) => {
         let score = 0;
         if ((p as any).format === "stories") {
           score = calcScoreStories(
@@ -131,7 +131,18 @@ export default function Settings() {
             mult
           );
         }
-        await supabase.from("posts").update({ score }).eq("id", p.id);
+        return { id: p.id, score };
+      });
+
+      // Process in batches of 50 concurrent updates
+      const BATCH_SIZE = 50;
+      for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+        const batch = updates.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          batch.map(({ id, score }) =>
+            supabase.from("posts").update({ score }).eq("id", id)
+          )
+        );
       }
       toast({ title: "Scores recalculados!", description: `${posts.length} posts atualizados.` });
     }
