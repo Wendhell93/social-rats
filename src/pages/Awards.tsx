@@ -36,9 +36,10 @@ import {
   ChevronUp,
   Scroll,
 } from "lucide-react";
-import { EngagementWeights, StoriesWeights, ContentTypeMultipliers } from "@/lib/types";
+import { EngagementWeights, StoriesWeights, ContentTypeMultipliers, Area } from "@/lib/types";
 import { parseISO, isWithinInterval, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { AreaPicker } from "@/components/AreaPicker";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -274,12 +275,14 @@ function AwardFormDialog({
   onClose,
   award,
   prizes: initialPrizes,
+  initialAreas,
   onSaved,
 }: {
   open: boolean;
   onClose: () => void;
   award: Partial<Award> | null;
   prizes: AwardPrize[];
+  initialAreas: Area[];
   onSaved: () => void;
 }) {
   const { toast } = useToast();
@@ -289,6 +292,7 @@ function AwardFormDialog({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [prizes, setPrizes] = useState<PrizeFormItem[]>([]);
+  const [selectedAreas, setSelectedAreas] = useState<Area[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -296,6 +300,7 @@ function AwardFormDialog({
     setDescription(award?.description ?? "");
     setStartDate(award?.start_date ?? "");
     setEndDate(award?.end_date ?? "");
+    setSelectedAreas(initialAreas);
     setPrizes(
       initialPrizes.map((p) => ({
         id: p.id,
@@ -355,6 +360,14 @@ function AwardFormDialog({
       // delete existing prizes then re-insert
       if (award?.id) {
         await supabase.from("award_prizes").delete().eq("award_id", awardId!);
+      }
+
+      // Sync areas
+      await supabase.from("award_areas").delete().eq("award_id", awardId!);
+      if (selectedAreas.length > 0) {
+        await supabase.from("award_areas").insert(
+          selectedAreas.map(a => ({ award_id: awardId!, area_id: a.id }))
+        );
       }
 
       for (const p of prizes) {
@@ -420,6 +433,11 @@ function AwardFormDialog({
                 <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </div>
             </div>
+            <div className="space-y-1.5">
+              <Label>Áreas participantes</Label>
+              <p className="text-xs text-muted-foreground">Deixe vazio para incluir todos os criadores</p>
+              <AreaPicker selected={selectedAreas} onChange={setSelectedAreas} />
+            </div>
           </TabsContent>
 
           <TabsContent value="prizes" className="space-y-4">
@@ -468,6 +486,7 @@ export default function Awards() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [closingId, setClosingId] = useState<string | null>(null);
+  const [awardAreasMap, setAwardAreasMap] = useState<Record<string, Area[]>>({});
 
   async function load() {
     setLoading(true);
@@ -476,11 +495,13 @@ export default function Awards() {
       { data: allPrizes },
       { data: m },
       { data: pc },
+      { data: awardAreas },
     ] = await Promise.all([
       supabase.from("awards").select("*").order("created_at", { ascending: false }),
       supabase.from("award_prizes").select("*, winner:members!award_prizes_winner_member_id_fkey(*)").order("placement"),
-      supabase.from("members").select("*"),
+      supabase.from("members").select("*, creator_areas(area:areas(*))"),
       supabase.from("post_creators").select("creator_id, post:posts(id, score, created_at, posted_at)"),
+      supabase.from("award_areas").select("award_id, area:areas(*)"),
     ]);
 
     if (awards) {
@@ -502,6 +523,18 @@ export default function Awards() {
 
     if (m) setMembers(m);
     if (pc) setPostCreators(pc as PostCreatorRow[]);
+    
+    // Build areas map per award
+    if (awardAreas) {
+      const map: Record<string, Area[]> = {};
+      (awardAreas as any[]).forEach((aa: any) => {
+        if (!aa.area) return;
+        if (!map[aa.award_id]) map[aa.award_id] = [];
+        map[aa.award_id].push(aa.area);
+      });
+      setAwardAreasMap(map);
+    }
+
     setLoading(false);
   }
 
@@ -519,7 +552,7 @@ export default function Awards() {
     });
   }, []);
 
-  // Compute live ranking filtered by award period — uses created_at to match Ranking page
+  // Compute live ranking filtered by award period and areas
   function computeLiveRanking(award: Award): RankingEntry[] {
     const filtered = postCreators.filter((pc) => {
       if (!pc.post) return false;
@@ -535,7 +568,17 @@ export default function Awards() {
       return true;
     });
 
-    return members
+    // Filter members by award areas (if any)
+    const awardAreas = awardAreasMap[award.id] || [];
+    const areaIds = new Set(awardAreas.map(a => a.id));
+    const eligibleMembers = areaIds.size === 0
+      ? members
+      : members.filter(m => {
+          const memberAreas = (m as any).creator_areas?.map((ca: any) => ca.area?.id).filter(Boolean) || [];
+          return memberAreas.some((id: string) => areaIds.has(id));
+        });
+
+    return eligibleMembers
       .map((m) => {
         const mp = filtered.filter((pc) => pc.creator_id === m.id);
         const seen = new Set<string>();
@@ -630,7 +673,7 @@ export default function Awards() {
                     { icon: "💬", label: "Comentários", val: weights?.comments_weight },
                     { icon: "🔁", label: "Compartilhamentos", val: weights?.shares_weight },
                     { icon: "🔖", label: "Salvamentos", val: weights?.saves_weight },
-                    { icon: "👁️", label: "Visualizações", val: (weights as any)?.views_weight },
+                    { icon: "👁️", label: "Visualizações", val: weights?.views_weight },
                   ].map(({ icon, label, val }) => (
                     <div key={label} className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-1.5">
@@ -776,6 +819,15 @@ export default function Awards() {
                       <CardTitle className="text-xl">{activeAward.title}</CardTitle>
                       {activeAward.description && (
                         <p className="text-sm text-muted-foreground">{activeAward.description}</p>
+                      )}
+                      {(awardAreasMap[activeAward.id] || []).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {awardAreasMap[activeAward.id].map(a => (
+                            <span key={a.id} className="px-2 py-0.5 rounded-md bg-primary/15 border border-primary/20 text-xs text-primary">
+                              {a.name}
+                            </span>
+                          ))}
+                        </div>
                       )}
                     </div>
                     {isAdmin && (
@@ -952,6 +1004,7 @@ export default function Awards() {
         onClose={() => setDialogOpen(false)}
         award={activeAward}
         prizes={activeAward ? activePrizes : []}
+        initialAreas={activeAward ? (awardAreasMap[activeAward.id] || []) : []}
         onSaved={load}
       />
     </div>

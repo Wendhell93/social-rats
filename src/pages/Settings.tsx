@@ -131,7 +131,7 @@ export default function Settings() {
         } else {
           const mult = getMultiplier(p.content_type ?? null, { ...multipliers, ...multForm });
           score = calcScore(
-            { likes: p.likes, comments: p.comments, shares: p.shares, saves: p.saves, views: (p as any).views ?? 0 },
+            { likes: p.likes, comments: p.comments, shares: p.shares, saves: p.saves, views: p.views ?? 0 },
             { ...weights, ...form },
             mult
           );
