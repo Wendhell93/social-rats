@@ -171,7 +171,7 @@ export default function EditPost() {
         <p className="text-muted-foreground text-sm mt-1 truncate">{post.url}</p>
         {(() => {
           const plat = detectPlatform(post.url);
-          return (plat === "instagram" || plat === "tiktok") ? (
+          return (plat === "instagram" || plat === "tiktok" || plat === "youtube") ? (
             <div className="flex items-center gap-2 mt-3">
               <Button
                 type="button"

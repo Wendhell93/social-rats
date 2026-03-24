@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     const { data: posts, error: fetchErr } = await supabase
       .from('posts')
       .select('id, url, platform, format, content_type')
-      .or('platform.eq.instagram,platform.eq.tiktok')
+      .or('platform.eq.instagram,platform.eq.tiktok,platform.eq.youtube')
       .gte('created_at', since.toISOString())
       .order('created_at', { ascending: false });
 
@@ -198,6 +198,25 @@ async function scrapeOne(url: string, platform: string, apiKey: string) {
       shares: stats.share_count ?? 0,
       saves: stats.collect_count ?? 0,
       views: stats.play_count ?? 0,
+      views_pico: 0, interactions: 0, forwards: 0, cta_clicks: 0,
+    };
+  }
+
+  if (platform === 'youtube') {
+    const res = await fetch(
+      `https://api.sociavault.com/youtube/video?url=${encodeURIComponent(url)}`,
+      { method: 'GET', headers }
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    const data = json?.data ?? json;
+    if (!data?.id) return null;
+    return {
+      likes: data.likeCountInt ?? 0,
+      comments: data.commentCountInt ?? 0,
+      shares: 0,
+      saves: 0,
+      views: data.viewCountInt ?? 0,
       views_pico: 0, interactions: 0, forwards: 0, cta_clicks: 0,
     };
   }

@@ -45,6 +45,8 @@ Deno.serve(async (req) => {
       result = await scrapeInstagram(url, headers);
     } else if (platform === 'tiktok') {
       result = await scrapeTikTok(url, headers);
+    } else if (platform === 'youtube') {
+      result = await scrapeYouTube(url, headers);
     } else {
       return jsonResponse(manualFallback(`Scraping não suportado para "${platform}". Preencha manualmente.`));
     }
@@ -143,6 +145,41 @@ async function scrapeTikTok(url: string, headers: Record<string, string>): Promi
     thumbnail_url: detail.video?.cover?.url_list?.[0]
       ?? detail.video?.origin_cover?.url_list?.[0]
       ?? null,
+  };
+}
+
+// ─── YouTube ──────────────────────────────────────────────────────────────────
+
+async function scrapeYouTube(url: string, headers: Record<string, string>): Promise<ScrapeResult> {
+  const apiUrl = `https://api.sociavault.com/youtube/video?url=${encodeURIComponent(url)}`;
+
+  console.log('Scraping YouTube:', url);
+  const response = await fetch(apiUrl, { method: 'GET', headers });
+
+  if (!response.ok) {
+    const text = await response.text();
+    console.error('SociaVault YouTube error:', response.status, text);
+    return manualFallback(`SociaVault retornou status ${response.status}`);
+  }
+
+  const json = await response.json();
+  const data = json?.data ?? json;
+
+  if (!data?.id) {
+    console.error('YouTube: unexpected response structure', JSON.stringify(json).slice(0, 500));
+    return manualFallback('Resposta inesperada da API do YouTube');
+  }
+
+  return {
+    success: true,
+    scraped: true,
+    likes: data.likeCountInt ?? 0,
+    comments: data.commentCountInt ?? 0,
+    shares: 0,
+    saves: 0,
+    views: data.viewCountInt ?? 0,
+    title: data.title ? data.title.slice(0, 200) : null,
+    thumbnail_url: data.thumbnail ?? null,
   };
 }
 

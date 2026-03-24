@@ -235,7 +235,7 @@ export default function NewPost() {
             {platform && (
               <div className="flex items-center gap-2 flex-wrap">
                 <PlatformBadge platform={platform} />
-                {(platform === "instagram" || platform === "tiktok") && (
+                {(platform === "instagram" || platform === "tiktok" || platform === "youtube") && (
                   <Button
                     type="button"
                     size="sm"
