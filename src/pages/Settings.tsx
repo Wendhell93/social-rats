@@ -58,6 +58,7 @@ export default function Settings() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [areas, setAreas] = useState<{ id: string; name: string }[]>([]);
   const [newArea, setNewArea] = useState("");
+  const [deleteAreaTarget, setDeleteAreaTarget] = useState<{ id: string; name: string } | null>(null);
 
   const { toast } = useToast();
 
@@ -447,11 +448,7 @@ export default function Settings() {
                     <div key={a.id} className="flex items-center justify-between px-3 py-2 rounded-lg border border-border">
                       <span className="text-sm">{a.name}</span>
                       <button
-                        onClick={async () => {
-                          await supabase.from("areas").delete().eq("id", a.id);
-                          setAreas(prev => prev.filter(x => x.id !== a.id));
-                          toast({ title: "Área removida" });
-                        }}
+                        onClick={() => setDeleteAreaTarget(a)}
                         className="text-muted-foreground hover:text-destructive transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -484,6 +481,33 @@ export default function Settings() {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteTarget && handleDeleteAdmin(deleteTarget)}
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Area Confirmation */}
+      <AlertDialog open={!!deleteAreaTarget} onOpenChange={open => !open && setDeleteAreaTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover área?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A área <strong>{deleteAreaTarget?.name}</strong> será removida e todos os vínculos com criadores serão desfeitos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!deleteAreaTarget) return;
+                await supabase.from("areas").delete().eq("id", deleteAreaTarget.id);
+                setAreas(prev => prev.filter(x => x.id !== deleteAreaTarget.id));
+                setDeleteAreaTarget(null);
+                toast({ title: "Área removida" });
+              }}
             >
               Remover
             </AlertDialogAction>

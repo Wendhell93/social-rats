@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Creator } from "@/lib/types";
+import { Creator, Area } from "@/lib/types";
 import { useAreaCreatorIds } from "@/hooks/use-area-filter";
+import { AreaPicker } from "@/components/AreaPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Users, User, Upload, X, Link as LinkIcon, Star } from "lucide-react";
@@ -32,13 +33,14 @@ export default function Creators() {
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [formAreas, setFormAreas] = useState<Area[]>([]);
   const { toast } = useToast();
   const { isAdmin } = useAuth();
   const { matchesArea } = useAreaCreatorIds();
 
   async function load() {
     const [{ data: members }, { data: pc }] = await Promise.all([
-      supabase.from("members").select("*").order("name"),
+      supabase.from("members").select("*, creator_areas(area:areas(*))").order("name"),
       supabase.from("post_creators").select("creator_id, post:posts(score)"),
     ]);
     if (members) setCreators(members);
@@ -57,6 +59,7 @@ export default function Creators() {
   function openNew() {
     setEditCreator(null);
     setForm({ name: "", role: "", avatar_url: "" });
+    setFormAreas([]);
     setAvatarTab("url");
     setUploadFile(null);
     setUploadPreview(null);
@@ -66,6 +69,7 @@ export default function Creators() {
   function openEdit(c: Creator) {
     setEditCreator(c);
     setForm({ name: c.name, role: c.role || "", avatar_url: c.avatar_url || "" });
+    setFormAreas(c.creator_areas?.map((ca: any) => ca.area).filter(Boolean) || []);
     setAvatarTab("url");
     setUploadFile(null);
     setUploadPreview(null);
@@ -104,16 +108,38 @@ export default function Creators() {
       avatar_url = url;
     }
     const payload = { name: form.name.trim(), role: form.role.trim() || null, avatar_url };
-    const { error } = editCreator
-      ? await supabase.from("members").update(payload).eq("id", editCreator.id)
-      : await supabase.from("members").insert(payload);
-    if (error) {
-      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+    let memberId: string | null = editCreator?.id || null;
+    if (editCreator) {
+      const { error } = await supabase.from("members").update(payload).eq("id", editCreator.id);
+      if (error) {
+        toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+        setSaving(false);
+        return;
+      }
+      memberId = editCreator.id;
     } else {
-      toast({ title: editCreator ? "Criador atualizado!" : "Criador cadastrado!" });
-      setOpen(false);
-      load();
+      const { data, error } = await supabase.from("members").insert(payload).select().single();
+      if (error || !data) {
+        toast({ title: "Erro ao salvar", description: error?.message, variant: "destructive" });
+        setSaving(false);
+        return;
+      }
+      memberId = data.id;
     }
+
+    // Sync areas
+    if (memberId) {
+      await supabase.from("creator_areas").delete().eq("creator_id", memberId);
+      if (formAreas.length > 0) {
+        await supabase.from("creator_areas").insert(
+          formAreas.map(a => ({ creator_id: memberId!, area_id: a.id }))
+        );
+      }
+    }
+
+    toast({ title: editCreator ? "Criador atualizado!" : "Criador cadastrado!" });
+    setOpen(false);
+    load();
     setSaving(false);
   }
 
@@ -263,6 +289,10 @@ export default function Creators() {
                   )}
                 </TabsContent>
               </Tabs>
+            </div>
+            <div>
+              <Label className="text-sm mb-1.5 block">Áreas</Label>
+              <AreaPicker selected={formAreas} onChange={setFormAreas} />
             </div>
           </div>
           <DialogFooter>

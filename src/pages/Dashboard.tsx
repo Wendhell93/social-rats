@@ -107,7 +107,10 @@ export default function Dashboard() {
                 try {
                   const res = await fetch("https://kcfopagleppcazuodyal.supabase.co/functions/v1/refresh-all-metrics", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                      "Content-Type": "application/json",
+                      "x-refresh-secret": import.meta.env.VITE_REFRESH_SECRET || "",
+                    },
                     body: JSON.stringify({ triggered_by: "manual", days_back: 30 }),
                   });
                   const data = await res.json();

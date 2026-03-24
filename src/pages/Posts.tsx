@@ -33,6 +33,7 @@ export default function Posts() {
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [formatFilter, setFormatFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(50);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { inPeriod } = usePeriodFilter();
@@ -79,7 +80,7 @@ export default function Posts() {
             <FileText className="w-5 h-5 text-primary" />
             <h1 className="text-2xl font-bold">Conteúdos</h1>
           </div>
-          <p className="text-muted-foreground text-sm">{posts.length} posts cadastrados</p>
+          <p className="text-muted-foreground text-sm">{filtered.length} posts{filtered.length !== posts.length ? ` de ${posts.length}` : ""}</p>
         </div>
         {isAdmin && (
           <Button asChild className="gradient-primary text-white border-0 glow-blue flex-shrink-0">
@@ -130,8 +131,9 @@ export default function Posts() {
           {!search && isAdmin && <Button asChild className="gradient-primary text-white border-0"><Link to="/posts/new">Cadastrar primeiro post</Link></Button>}
         </div>
       ) : (
+        <>
         <div className="space-y-3">
-          {filtered.map(post => {
+          {filtered.slice(0, visibleCount).map(post => {
             const isStories = (post.format || "feed") === "stories";
             return (
               <div key={post.id} className="bg-card border border-border rounded-xl p-5 card-glow">
@@ -209,6 +211,14 @@ export default function Posts() {
             );
           })}
         </div>
+        {visibleCount < filtered.length && (
+          <div className="flex justify-center mt-6">
+            <Button variant="outline" onClick={() => setVisibleCount(v => v + 50)} className="border-border">
+              Carregar mais ({filtered.length - visibleCount} restantes)
+            </Button>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

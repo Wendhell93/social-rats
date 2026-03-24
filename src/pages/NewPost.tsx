@@ -23,10 +23,12 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ContentTypePicker } from "@/components/ContentTypePicker";
 import { scrapePost } from "@/lib/scrape";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function NewPost() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { profile } = useAuth();
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [postFormat, setPostFormat] = useState<PostFormat>("feed");
@@ -62,13 +64,20 @@ export default function NewPost() {
         supabase.from("content_type_multipliers").select("*").limit(1).single(),
         (supabase as any).from("stories_weights").select("*").limit(1).single(),
       ]);
-      if (m) setCreators(m);
+      if (m) {
+        setCreators(m);
+        // Pre-select logged user's profile
+        if (profile) {
+          const me = m.find((c: Creator) => c.id === profile.id);
+          if (me) setSelectedCreators([me]);
+        }
+      }
       if (w) setWeights(w);
       if (mp) setMultipliers(mp as ContentTypeMultipliers);
       if (sw) setStoriesWeights(sw as StoriesWeights);
     }
     load();
-  }, []);
+  }, [profile]);
 
   function toggleCreator(creator: Creator) {
     setSelectedCreators(prev =>
