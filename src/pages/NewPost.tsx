@@ -225,9 +225,9 @@ export default function NewPost() {
                   {scraping
                     ? <Loader2 className="w-4 h-4 animate-spin" />
                     : scrapeStatus === "success"
-                      ? <CheckCircle className="w-4 h-4 text-green-500" />
+                  ? <CheckCircle className="w-4 h-4 text-secondary" />
                       : scrapeStatus === "manual"
-                        ? <AlertTriangle className="w-4 h-4 text-amber-500" />
+                        ? <AlertTriangle className="w-4 h-4 text-destructive" />
                         : <Wand2 className="w-4 h-4" />
                   }
                   {scraping ? "Buscando..." : "Auto-preencher"}
