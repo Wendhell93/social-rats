@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Heart, MessageCircle, Share2, Bookmark, Save, Info, Layers, Loader2,
-  Eye, Repeat2, MousePointerClick, BookImage, UserPlus, Trash2, ShieldCheck, Mail
+  Eye, Repeat2, MousePointerClick, BookImage, UserPlus, Trash2, ShieldCheck, Mail, Building2
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -21,6 +21,7 @@ const feedWeightFields = [
   { key: "comments_weight", label: "Comentários", icon: MessageCircle, description: "Peso por comentário" },
   { key: "shares_weight", label: "Compartilhamentos", icon: Share2, description: "Peso por compartilhamento" },
   { key: "saves_weight", label: "Salvamentos", icon: Bookmark, description: "Peso por salvamento" },
+  { key: "views_weight", label: "Visualizações", icon: Eye, description: "Peso por visualização" },
 ] as const;
 
 const storiesWeightFields = [
@@ -41,7 +42,7 @@ type AdminEmail = { id: string; email: string; created_at: string };
 export default function Settings() {
   const { user } = useAuth();
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
-  const [form, setForm] = useState({ likes_weight: 1, comments_weight: 3, shares_weight: 5, saves_weight: 2 });
+  const [form, setForm] = useState({ likes_weight: 1, comments_weight: 3, shares_weight: 5, saves_weight: 2, views_weight: 0 });
   const [multipliers, setMultipliers] = useState<ContentTypeMultipliers | null>(null);
   const [multForm, setMultForm] = useState({ technical: 1.0, meme: 1.0, announcement: 1.0 });
   const [storiesW, setStoriesW] = useState<StoriesWeights | null>(null);
@@ -55,20 +56,23 @@ export default function Settings() {
   const [addingAdmin, setAddingAdmin] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminEmail | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [areas, setAreas] = useState<{ id: string; name: string }[]>([]);
+  const [newArea, setNewArea] = useState("");
 
   const { toast } = useToast();
 
   useEffect(() => {
     async function load() {
-      const [{ data: w }, { data: m }, { data: sw }, { data: ae }] = await Promise.all([
+      const [{ data: w }, { data: m }, { data: sw }, { data: ae }, { data: ar }] = await Promise.all([
         supabase.from("engagement_weights").select("*").limit(1).single(),
         supabase.from("content_type_multipliers").select("*").limit(1).single(),
         (supabase as any).from("stories_weights").select("*").limit(1).single(),
         (supabase as any).from("admin_emails").select("*").order("created_at", { ascending: true }),
+        supabase.from("areas").select("*").order("name"),
       ]);
       if (w) {
         setWeights(w);
-        setForm({ likes_weight: w.likes_weight, comments_weight: w.comments_weight, shares_weight: w.shares_weight, saves_weight: w.saves_weight });
+        setForm({ likes_weight: w.likes_weight, comments_weight: w.comments_weight, shares_weight: w.shares_weight, saves_weight: w.saves_weight, views_weight: w.views_weight ?? 0 });
       }
       if (m) {
         setMultipliers(m as ContentTypeMultipliers);
@@ -84,6 +88,7 @@ export default function Settings() {
         });
       }
       if (ae) setAdminEmails(ae as AdminEmail[]);
+      if (ar) setAreas(ar);
       setLoading(false);
     }
     load();
@@ -126,7 +131,7 @@ export default function Settings() {
         } else {
           const mult = getMultiplier(p.content_type ?? null, { ...multipliers, ...multForm });
           score = calcScore(
-            { likes: p.likes, comments: p.comments, shares: p.shares, saves: p.saves },
+            { likes: p.likes, comments: p.comments, shares: p.shares, saves: p.saves, views: (p as any).views ?? 0 },
             { ...weights, ...form },
             mult
           );
@@ -147,6 +152,19 @@ export default function Settings() {
       toast({ title: "Scores recalculados!", description: `${posts.length} posts atualizados.` });
     }
     setSaving(false);
+  }
+
+  async function handleAddArea() {
+    const name = newArea.trim().toUpperCase();
+    if (!name) return;
+    const { data, error } = await supabase.from("areas").insert({ name }).select().single();
+    if (error) {
+      toast({ title: "Erro ao adicionar área", description: error.message, variant: "destructive" });
+      return;
+    }
+    setAreas(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+    setNewArea("");
+    toast({ title: "Área adicionada!" });
   }
 
   async function handleAddAdmin() {
@@ -195,7 +213,7 @@ export default function Settings() {
     setDeleteTarget(null);
   }
 
-  const exampleFeedScore = (100 * form.likes_weight + 20 * form.comments_weight + 5 * form.shares_weight + 15 * form.saves_weight);
+  const exampleFeedScore = (100 * form.likes_weight + 20 * form.comments_weight + 5 * form.shares_weight + 15 * form.saves_weight + 5000 * form.views_weight);
   const exampleStoriesScore = (5000 * storiesForm.views_pico_weight + 80 * storiesForm.interactions_weight + 15 * storiesForm.forwards_weight + 10 * storiesForm.cta_clicks_weight);
 
   return (
@@ -382,10 +400,10 @@ export default function Settings() {
                       <Layers className="w-3.5 h-3.5 text-primary" /> Fórmula Feed
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Score = ((curtidas × {form.likes_weight}) + (comentários × {form.comments_weight}) + (compartilhamentos × {form.shares_weight}) + (salvamentos × {form.saves_weight})) × tipo
+                      Score = ((curtidas × {form.likes_weight}) + (comentários × {form.comments_weight}) + (compartilhamentos × {form.shares_weight}) + (salvamentos × {form.saves_weight}) + (views × {form.views_weight})) × tipo
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      <strong>Exemplo</strong>: 100❤️, 20💬, 5🔁, 15🔖 sem tipo = <strong>{exampleFeedScore.toFixed(0)} pts</strong>
+                      <strong>Exemplo</strong>: 100❤️, 20💬, 5🔁, 15🔖, 5.000👁️ sem tipo = <strong>{exampleFeedScore.toFixed(0)} pts</strong>
                     </p>
                   </div>
                   <div className="border-t border-border pt-3">
@@ -401,6 +419,47 @@ export default function Settings() {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Area Management ─────────────────────────────── */}
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-primary" /> Gerenciar Áreas
+              </CardTitle>
+              <CardDescription>Adicionar ou remover áreas disponíveis para criadores</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Nome da nova área..."
+                  value={newArea}
+                  onChange={e => setNewArea(e.target.value)}
+                  className="bg-input border-border text-sm"
+                  onKeyDown={e => e.key === "Enter" && handleAddArea()}
+                />
+                <Button size="sm" onClick={handleAddArea} disabled={!newArea.trim()}>Adicionar</Button>
+              </div>
+              {areas.length > 0 && (
+                <div className="space-y-1">
+                  {areas.map(a => (
+                    <div key={a.id} className="flex items-center justify-between px-3 py-2 rounded-lg border border-border">
+                      <span className="text-sm">{a.name}</span>
+                      <button
+                        onClick={async () => {
+                          await supabase.from("areas").delete().eq("id", a.id);
+                          setAreas(prev => prev.filter(x => x.id !== a.id));
+                          toast({ title: "Área removida" });
+                        }}
+                        className="text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 

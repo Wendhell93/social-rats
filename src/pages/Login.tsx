@@ -23,16 +23,21 @@ const RatIcon = () => (
 );
 
 export default function Login() {
-  const { isAdmin, loading, signInWithGoogle } = useAuth();
+  const { user, loading, signInWithGoogle, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || "/";
 
   useEffect(() => {
-    if (!loading && isAdmin) {
-      navigate(from, { replace: true });
+    if (!loading && user) {
+      // If logged in but no profile, go to profile creation
+      if (!profile) {
+        navigate("/meu-perfil", { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     }
-  }, [isAdmin, loading, navigate, from]);
+  }, [user, profile, loading, navigate, from]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -45,7 +50,7 @@ export default function Login() {
             </div>
             <div className="text-center">
               <h1 className="text-xl font-bold text-foreground">SocialRats</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">Área administrativa</p>
+              <p className="text-sm text-muted-foreground mt-0.5">Plataforma de criadores</p>
             </div>
           </div>
 
@@ -53,7 +58,7 @@ export default function Login() {
 
           <div className="w-full flex flex-col items-center gap-3">
             <p className="text-sm text-muted-foreground text-center">
-              Entre com sua conta Google para acessar o painel de administração
+              Entre com sua conta Google para acessar a plataforma
             </p>
             <Button
               onClick={signInWithGoogle}

@@ -1,11 +1,14 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, FileText, Trophy, TrendingUp, Heart, MessageCircle, Share2, Bookmark } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Trophy, TrendingUp, Heart, MessageCircle, Share2, Bookmark, Eye, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePeriodFilter } from "@/hooks/use-period-filter";
+import { useAreaCreatorIds } from "@/hooks/use-area-filter";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
-type PostRow = { id: string; score: number; likes: number; comments: number; shares: number; saves: number; created_at: string };
+type PostRow = { id: string; score: number; likes: number; comments: number; shares: number; saves: number; views: number; created_at: string };
 type PostCreatorRow = { creator_id: string; post: { id: string; score: number; created_at: string } | null };
 type MemberRow = { id: string; name: string; role: string | null; avatar_url: string | null };
 type TopCreator = { id: string; name: string; role: string | null; avatar_url: string | null; score: number; post_count: number };
@@ -16,11 +19,15 @@ export default function Dashboard() {
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [loading, setLoading] = useState(true);
   const { inPeriod } = usePeriodFilter();
+  const { matchesArea } = useAreaCreatorIds();
+  const { isAdmin } = useAuth();
+  const { toast } = useToast();
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     async function load() {
       const [{ data: posts }, { data: pc }, { data: m }] = await Promise.all([
-        supabase.from("posts").select("id, score, likes, comments, shares, saves, created_at"),
+        supabase.from("posts").select("id, score, likes, comments, shares, saves, views, created_at"),
         supabase.from("post_creators").select("creator_id, post:posts(id, score, created_at)"),
         supabase.from("members").select("id, name, role, avatar_url"),
       ]);
@@ -32,18 +39,24 @@ export default function Dashboard() {
     load();
   }, []);
 
-  const filteredPosts = useMemo(() => allPosts.filter(p => inPeriod(p.created_at)), [allPosts, inPeriod]);
-  const filteredPc = useMemo(() => allPostCreators.filter(pc => pc.post && inPeriod(pc.post.created_at)), [allPostCreators, inPeriod]);
+  const filteredPc = useMemo(() => allPostCreators.filter(pc => pc.post && inPeriod(pc.post.created_at) && matchesArea(pc.creator_id)), [allPostCreators, inPeriod, matchesArea]);
+
+  // Post IDs that have at least one creator matching the area
+  const areaPostIds = useMemo(() => new Set(filteredPc.map(pc => pc.post!.id)), [filteredPc]);
+  const filteredPosts = useMemo(() => allPosts.filter(p => inPeriod(p.created_at) && areaPostIds.has(p.id)), [allPosts, inPeriod, areaPostIds]);
+
+  const filteredMembers = useMemo(() => members.filter(m => matchesArea(m.id)), [members, matchesArea]);
 
   const stats = useMemo(() => ({
-    creators: members.length,
+    creators: filteredMembers.length,
     posts: filteredPosts.length,
     totalScore: filteredPosts.reduce((a, p) => a + (p.score || 0), 0),
+    totalViews: filteredPosts.reduce((a, p) => a + (p.views || 0), 0),
     totalLikes: filteredPosts.reduce((a, p) => a + (p.likes || 0), 0),
     totalComments: filteredPosts.reduce((a, p) => a + (p.comments || 0), 0),
     totalShares: filteredPosts.reduce((a, p) => a + (p.shares || 0), 0),
     totalSaves: filteredPosts.reduce((a, p) => a + (p.saves || 0), 0),
-  }), [filteredPosts, members]);
+  }), [filteredPosts, filteredMembers]);
 
   const topCreators = useMemo(() => {
     const map: Record<string, number> = {};
@@ -52,11 +65,11 @@ export default function Dashboard() {
       map[pc.creator_id] = (map[pc.creator_id] || 0) + (pc.post?.score || 0);
       countMap[pc.creator_id] = (countMap[pc.creator_id] || 0) + 1;
     });
-    return members
+    return filteredMembers
       .map(c => ({ ...c, score: map[c.id] || 0, post_count: countMap[c.id] || 0 }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 5);
-  }, [filteredPc, members]);
+  }, [filteredPc, filteredMembers]);
 
   const statCards = [
     { label: "Criadores", value: stats.creators, icon: Users, color: "text-primary", bg: "bg-primary/10" },
@@ -65,6 +78,7 @@ export default function Dashboard() {
   ];
 
   const engagementCards = [
+    { label: "Visualizações", value: stats.totalViews, icon: Eye },
     { label: "Curtidas", value: stats.totalLikes, icon: Heart },
     { label: "Comentários", value: stats.totalComments, icon: MessageCircle },
     { label: "Compartilhamentos", value: stats.totalShares, icon: Share2 },
@@ -74,11 +88,53 @@ export default function Dashboard() {
   return (
     <div className="p-4 md:p-8 animate-fade-in">
       <div className="mb-6 md:mb-8">
-        <div className="flex items-center gap-2 mb-1">
-          <LayoutDashboard className="w-5 h-5 text-primary" />
-          <h1 className="text-2xl font-bold">Dashboard</h1>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <LayoutDashboard className="w-5 h-5 text-primary" />
+              <h1 className="text-2xl font-bold">Dashboard</h1>
+            </div>
+            <p className="text-muted-foreground text-sm">Visão geral do desempenho de conteúdo</p>
+          </div>
+          {isAdmin && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs gap-1.5"
+              disabled={refreshing}
+              onClick={async () => {
+                setRefreshing(true);
+                try {
+                  const res = await fetch("https://kcfopagleppcazuodyal.supabase.co/functions/v1/refresh-all-metrics", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ triggered_by: "manual", days_back: 30 }),
+                  });
+                  const data = await res.json();
+                  if (data.success) {
+                    toast({ title: "Métricas atualizadas!", description: `${data.posts_updated} posts atualizados, ${data.posts_failed} falharam.` });
+                    // Reload data
+                    const [{ data: posts }, { data: pc }] = await Promise.all([
+                      supabase.from("posts").select("id, score, likes, comments, shares, saves, views, created_at"),
+                      supabase.from("post_creators").select("creator_id, post:posts(id, score, created_at)"),
+                    ]);
+                    if (posts) setAllPosts(posts as PostRow[]);
+                    if (pc) setAllPostCreators(pc as PostCreatorRow[]);
+                  } else {
+                    toast({ title: "Erro ao atualizar", description: data.error || "Tente novamente.", variant: "destructive" });
+                  }
+                } catch (err: any) {
+                  toast({ title: "Erro", description: err?.message, variant: "destructive" });
+                } finally {
+                  setRefreshing(false);
+                }
+              }}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              {refreshing ? "Atualizando..." : "Atualizar métricas"}
+            </Button>
+          )}
         </div>
-        <p className="text-muted-foreground text-sm">Visão geral do desempenho de conteúdo</p>
       </div>
 
       {loading ? (
@@ -101,7 +157,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
             {engagementCards.map(({ label, value, icon: Icon }) => (
               <div key={label} className="bg-card border border-border rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-1.5">

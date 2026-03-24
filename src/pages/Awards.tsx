@@ -630,6 +630,7 @@ export default function Awards() {
                     { icon: "💬", label: "Comentários", val: weights?.comments_weight },
                     { icon: "🔁", label: "Compartilhamentos", val: weights?.shares_weight },
                     { icon: "🔖", label: "Salvamentos", val: weights?.saves_weight },
+                    { icon: "👁️", label: "Visualizações", val: (weights as any)?.views_weight },
                   ].map(({ icon, label, val }) => (
                     <div key={label} className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-1.5">

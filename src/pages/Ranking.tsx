@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Trophy } from "lucide-react";
 import { usePeriodFilter } from "@/hooks/use-period-filter";
+import { useAreaCreatorIds } from "@/hooks/use-area-filter";
 
 interface PostCreatorRow {
   creator_id: string;
@@ -27,6 +28,7 @@ export default function Ranking() {
   const [postCreators, setPostCreators] = useState<PostCreatorRow[]>([]);
   const [loading, setLoading] = useState(true);
   const { inPeriod } = usePeriodFilter();
+  const { matchesArea } = useAreaCreatorIds();
 
   useEffect(() => {
     async function load() {
@@ -41,9 +43,10 @@ export default function Ranking() {
     load();
   }, []);
 
-  const filtered = postCreators.filter((pc) => pc.post && inPeriod(pc.post.created_at));
+  const filtered = postCreators.filter((pc) => pc.post && inPeriod(pc.post.created_at) && matchesArea(pc.creator_id));
 
   const ranking: RankingEntry[] = members
+    .filter((m) => matchesArea(m.id))
     .map((m) => {
       const mp = filtered.filter((pc) => pc.creator_id === m.id);
       const uniquePostIds = new Set(mp.map((pc) => pc.post!.id));

@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, Trophy, Gift, Star, BookOpen,
-  Settings, LogIn, LogOut, Menu, MoreHorizontal
+  Settings, LogIn, LogOut, Menu, MoreHorizontal, User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PeriodSelector } from "@/components/PeriodSelector";
+import { AreaFilter } from "@/components/AreaFilter";
+import { useAreaFilter } from "@/contexts/AreaFilterContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -120,12 +122,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin, signOut } = useAuth();
+  const { areaFilter, setAreaFilter } = useAreaFilter();
   const [topMenuOpen, setTopMenuOpen] = useState(false);
   const [bottomMenuOpen, setBottomMenuOpen] = useState(false);
 
-  const navItems = isAdmin
-    ? [...baseNavItems, { to: "/settings", icon: Settings, label: "Configurações" }]
-    : baseNavItems;
+  const navItems = [
+    ...baseNavItems,
+    ...(user ? [{ to: "/meu-perfil", icon: User, label: "Meu Perfil" }] : []),
+    ...(isAdmin ? [{ to: "/settings", icon: Settings, label: "Configurações" }] : []),
+  ];
 
   // Items not in bottomPrimary (for the "Mais" sheet)
   const moreItems = navItems.filter(item => !bottomPrimary.find(b => b.to === item.to));
@@ -183,8 +188,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ── Main content ───────────────────────────────────── */}
       <main className="flex-1 overflow-auto min-h-screen pt-14 pb-16 md:pt-0 md:pb-0">
-        {(["/", "/ranking"].includes(location.pathname)) && (
-          <div className="flex items-center justify-end gap-2 px-4 md:px-8 pt-4 md:pt-6 pb-0">
+        {(["/", "/ranking", "/posts", "/creators"].includes(location.pathname)) && (
+          <div className="flex items-center justify-end gap-2 px-4 md:px-8 pt-4 md:pt-6 pb-0 flex-wrap">
+            <AreaFilter value={areaFilter} onChange={setAreaFilter} />
             <PeriodSelector />
           </div>
         )}

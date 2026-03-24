@@ -3,11 +3,19 @@ export type Creator = {
   name: string;
   avatar_url: string | null;
   role: string | null;
+  auth_id: string | null;
   created_at: string;
+  creator_areas?: { area: Area }[];
 };
 
 // Alias for backward compat
 export type Member = Creator;
+
+export type Area = {
+  id: string;
+  name: string;
+  created_at: string;
+};
 
 export type PostFormat = "feed" | "stories";
 
@@ -22,11 +30,11 @@ export type Post = {
   comments: number;
   shares: number;
   saves: number;
+  views: number;
   score: number;
   posted_at: string | null;
   created_at: string;
   content_type: string | null;
-  // Stories / Feed format
   format: PostFormat;
   views_pico: number;
   interactions: number;
@@ -48,6 +56,7 @@ export type EngagementWeights = {
   comments_weight: number;
   shares_weight: number;
   saves_weight: number;
+  views_weight: number;
   updated_at: string;
 };
 
@@ -97,7 +106,7 @@ export function detectPlatform(url: string): string | null {
 }
 
 export function calcScore(
-  metrics: { likes: number; comments: number; shares: number; saves: number },
+  metrics: { likes: number; comments: number; shares: number; saves: number; views: number },
   weights: EngagementWeights,
   multiplier: number = 1.0
 ): number {
@@ -105,14 +114,11 @@ export function calcScore(
     metrics.likes * weights.likes_weight +
     metrics.comments * weights.comments_weight +
     metrics.shares * weights.shares_weight +
-    metrics.saves * weights.saves_weight;
+    metrics.saves * weights.saves_weight +
+    metrics.views * weights.views_weight;
   return base * multiplier;
 }
 
-/**
- * Stories score formula with configurable weights.
- * Defaults: views_pico×0.25, interactions×3, forwards×5, cta_clicks×10
- */
 export function calcScoreStories(
   metrics: { views_pico: number; interactions: number; forwards: number; cta_clicks: number },
   weights?: Pick<StoriesWeights, "views_pico_weight" | "interactions_weight" | "forwards_weight" | "cta_clicks_weight">

@@ -1,14 +1,18 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { Creator } from "@/lib/types";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   isAdmin: boolean;
   loading: boolean;
+  /** The linked member profile (null if not yet created) */
+  profile: Creator | null;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,17 +27,36 @@ async function checkIsAdmin(email: string | undefined): Promise<boolean> {
   return !!data;
 }
 
+async function fetchProfile(userId: string): Promise<Creator | null> {
+  const { data } = await supabase
+    .from("members")
+    .select("*, creator_areas(area:areas(*))")
+    .eq("auth_id", userId)
+    .maybeSingle();
+  return data as Creator | null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [profile, setProfile] = useState<Creator | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function handleSession(session: Session | null) {
     setSession(session);
     setUser(session?.user ?? null);
-    const admin = await checkIsAdmin(session?.user?.email);
-    setIsAdmin(admin);
+    if (session?.user) {
+      const [admin, prof] = await Promise.all([
+        checkIsAdmin(session.user.email),
+        fetchProfile(session.user.id),
+      ]);
+      setIsAdmin(admin);
+      setProfile(prof);
+    } else {
+      setIsAdmin(false);
+      setProfile(null);
+    }
     setLoading(false);
   }
 
@@ -61,10 +84,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signOut() {
     await supabase.auth.signOut();
     setIsAdmin(false);
+    setProfile(null);
+  }
+
+  async function refreshProfile() {
+    if (user) {
+      const prof = await fetchProfile(user.id);
+      setProfile(prof);
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, isAdmin, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, session, isAdmin, loading, profile, signInWithGoogle, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

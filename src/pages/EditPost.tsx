@@ -36,7 +36,7 @@ export default function EditPost() {
   const [multipliers, setMultipliers] = useState<ContentTypeMultipliers | null>(null);
   const [storiesWeights, setStoriesWeights] = useState<StoriesWeights | null>(null);
   const [postFormat, setPostFormat] = useState<PostFormat>("feed");
-  const [metrics, setMetrics] = useState({ likes: 0, comments: 0, shares: 0, saves: 0 });
+  const [metrics, setMetrics] = useState({ likes: 0, comments: 0, shares: 0, saves: 0, views: 0 });
   const [storiesMetrics, setStoriesMetrics] = useState({ views_pico: 0, interactions: 0, forwards: 0, cta_clicks: 0 });
   const [postedAt, setPostedAt] = useState<Date | undefined>(undefined);
   const [saving, setSaving] = useState(false);
@@ -60,6 +60,7 @@ export default function EditPost() {
           comments: data.comments ?? 0,
           shares: data.shares ?? 0,
           saves: data.saves ?? 0,
+          views: data.views ?? 0,
         });
         setScrapeStatus("success");
         toast({ title: "Métricas atualizadas!", description: "Confira os valores e salve." });
@@ -88,7 +89,7 @@ export default function EditPost() {
         const postData = p as any;
         setPost(postData as PostWithCreators);
         setPostFormat((postData.format as PostFormat) || "feed");
-        setMetrics({ likes: postData.likes, comments: postData.comments, shares: postData.shares, saves: postData.saves });
+        setMetrics({ likes: postData.likes, comments: postData.comments, shares: postData.shares, saves: postData.saves, views: postData.views ?? 0 });
         setStoriesMetrics({
           views_pico: postData.views_pico ?? 0,
           interactions: postData.interactions ?? 0,
@@ -130,7 +131,7 @@ export default function EditPost() {
       format: postFormat,
       ...(postFormat === "feed"
         ? { ...metrics, views_pico: 0, interactions: 0, forwards: 0, cta_clicks: 0 }
-        : { likes: 0, comments: 0, shares: 0, saves: 0, ...storiesMetrics }
+        : { likes: 0, comments: 0, shares: 0, saves: 0, views: 0, ...storiesMetrics }
       ),
       score,
       content_type: postFormat === "stories" ? null : contentType,
@@ -298,7 +299,7 @@ export default function EditPost() {
               Métricas de Engajamento
               {postFormat === "feed" && weights && (
                 <span className="text-xs font-normal text-muted-foreground">
-                  Score = {weights.likes_weight}×❤️ + {weights.comments_weight}×💬 + {weights.shares_weight}×🔁 + {weights.saves_weight}×🔖
+                  Score = {weights.likes_weight}×❤️ + {weights.comments_weight}×💬 + {weights.shares_weight}×🔁 + {weights.saves_weight}×🔖 + {weights.views_weight}×👁️
                 </span>
               )}
               {postFormat === "stories" && (
@@ -316,6 +317,7 @@ export default function EditPost() {
                   { key: "comments", label: "Comentários", icon: MessageCircle },
                   { key: "shares", label: "Compartilhamentos", icon: Share2 },
                   { key: "saves", label: "Salvamentos", icon: Bookmark },
+                  { key: "views", label: "Visualizações", icon: Eye },
                 ].map(({ key, label, icon: Icon }) => (
                   <div key={key}>
                     <Label className="flex items-center gap-1.5 mb-1.5 text-sm"><Icon className="w-3.5 h-3.5" /> {label}</Label>

@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PeriodSelector } from "@/components/PeriodSelector";
 import { usePeriodFilter } from "@/hooks/use-period-filter";
+import { useAreaCreatorIds } from "@/hooks/use-area-filter";
 
 type PostWithCreators = Post & { post_creators: { creator: Creator }[] };
 
@@ -35,6 +36,7 @@ export default function Posts() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { inPeriod } = usePeriodFilter();
+  const { matchesArea } = useAreaCreatorIds();
   const { isAdmin } = useAuth();
 
   async function load() {
@@ -63,7 +65,8 @@ export default function Posts() {
     const matchPlatform = platformFilter === "all" || p.platform === platformFilter;
     const matchFormat = formatFilter === "all" || (p.format || "feed") === formatFilter;
     const matchPeriod = inPeriod(p.posted_at || p.created_at);
-    return matchSearch && matchPlatform && matchFormat && matchPeriod;
+    const matchArea = !p.post_creators?.length || p.post_creators.some(pc => pc.creator && matchesArea(pc.creator.id));
+    return matchSearch && matchPlatform && matchFormat && matchPeriod && matchArea;
   }).sort((a, b) => sortBy === "score" ? b.score - a.score : new Date(b.posted_at || b.created_at).getTime() - new Date(a.posted_at || a.created_at).getTime());
 
   const platforms = Array.from(new Set(posts.map(p => p.platform))).sort();
@@ -164,6 +167,7 @@ export default function Posts() {
                         </>
                       ) : (
                         <>
+                          <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{(post.views ?? 0).toLocaleString()}</span>
                           <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{post.likes.toLocaleString()}</span>
                           <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" />{post.comments.toLocaleString()}</span>
                           <span className="flex items-center gap-1"><Share2 className="w-3 h-3" />{post.shares.toLocaleString()}</span>

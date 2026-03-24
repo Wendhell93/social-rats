@@ -2,6 +2,13 @@ import { useCallback } from "react";
 import { subDays, startOfMonth, isAfter, parseISO, isWithinInterval } from "date-fns";
 import { usePeriod } from "@/contexts/PeriodContext";
 
+/**
+ * Returns a stable `inPeriod(dateStr)` function that checks whether
+ * a given ISO date string falls inside the currently selected period.
+ *
+ * Replaces the duplicated inPeriod / filterPostCreators logic that
+ * was copy-pasted across Dashboard, Ranking and Posts.
+ */
 export function usePeriodFilter() {
   const { period, customStart, customEnd } = usePeriod();
 

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Creator, Post, EngagementWeights } from "@/lib/types";
 import { PlatformBadge } from "@/components/PlatformBadge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Heart, MessageCircle, Share2, Bookmark, Trophy, FileText, TrendingUp, ExternalLink, CalendarDays } from "lucide-react";
+import { ArrowLeft, User, Heart, MessageCircle, Share2, Bookmark, Trophy, FileText, TrendingUp, ExternalLink, CalendarDays, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -53,6 +53,7 @@ export default function CreatorProfile() {
   if (!creator) return <div className="p-4 md:p-8 text-muted-foreground">Criador não encontrado.</div>;
 
   const totalScore = posts.reduce((a, p) => a + (p.score || 0), 0);
+  const totalViews = posts.reduce((a, p) => a + (p.views || 0), 0);
   const totalLikes = posts.reduce((a, p) => a + (p.likes || 0), 0);
   const totalComments = posts.reduce((a, p) => a + (p.comments || 0), 0);
   const totalShares = posts.reduce((a, p) => a + (p.shares || 0), 0);
@@ -98,10 +99,11 @@ export default function CreatorProfile() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         {[
           { label: "Score Total", value: totalScore.toLocaleString(), icon: Trophy, color: "text-amber-400", bg: "bg-amber-400/10" },
           { label: "Posts", value: posts.length, icon: FileText, color: "text-primary", bg: "bg-primary/10" },
+          { label: "Visualizações", value: totalViews.toLocaleString(), icon: Eye, color: "text-emerald-400", bg: "bg-emerald-400/10" },
           { label: "Curtidas", value: totalLikes.toLocaleString(), icon: Heart, color: "text-pink-400", bg: "bg-pink-400/10" },
           { label: "Comentários", value: totalComments.toLocaleString(), icon: MessageCircle, color: "text-blue-400", bg: "bg-blue-400/10" },
           { label: "Salvamentos", value: totalSaves.toLocaleString(), icon: Bookmark, color: "text-secondary", bg: "bg-secondary/10" },
@@ -167,6 +169,7 @@ export default function CreatorProfile() {
                   </div>
                   <p className="text-sm font-medium truncate">{post.title || post.url}</p>
                   <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{(post.views ?? 0).toLocaleString()}</span>
                     <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{post.likes.toLocaleString()}</span>
                     <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" />{post.comments.toLocaleString()}</span>
                     <span className="flex items-center gap-1"><Share2 className="w-3 h-3" />{post.shares.toLocaleString()}</span>

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Creator } from "@/lib/types";
+import { useAreaCreatorIds } from "@/hooks/use-area-filter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Users, User, Upload, X, Link as LinkIcon, Star } from "lucide-react";
@@ -33,6 +34,7 @@ export default function Creators() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { isAdmin } = useAuth();
+  const { matchesArea } = useAreaCreatorIds();
 
   async function load() {
     const [{ data: members }, { data: pc }] = await Promise.all([
@@ -122,8 +124,10 @@ export default function Creators() {
   }
 
   const filtered = creators.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    (c.role || "").toLowerCase().includes(search.toLowerCase())
+    matchesArea(c.id) && (
+      c.name.toLowerCase().includes(search.toLowerCase()) ||
+      (c.role || "").toLowerCase().includes(search.toLowerCase())
+    )
   );
 
   return (
