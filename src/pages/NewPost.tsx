@@ -237,12 +237,12 @@ export default function NewPost() {
             {platform && <PlatformBadge platform={platform} />}
             {url && !platform && <p className="text-xs text-destructive">URL não reconhecida. Use links do Instagram, TikTok, YouTube, etc.</p>}
             {scrapeStatus === "success" && (
-              <p className="text-xs text-green-500 flex items-center gap-1.5">
+              <p className="text-xs text-secondary flex items-center gap-1.5">
                 <CheckCircle className="w-3.5 h-3.5" /> Métricas preenchidas automaticamente — revise antes de salvar.
               </p>
             )}
             {scrapeStatus === "manual" && (
-              <p className="text-xs text-amber-500 flex items-center gap-1.5">
+              <p className="text-xs text-destructive flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5" /> Não foi possível extrair métricas — preencha manualmente abaixo.
               </p>
             )}
