@@ -203,8 +203,9 @@ async function scrapeOne(url: string, platform: string, apiKey: string) {
   }
 
   if (platform === 'youtube') {
+    const normalizedUrl = normalizeYouTubeUrl(url);
     const res = await fetch(
-      `https://api.sociavault.com/youtube/video?url=${encodeURIComponent(url)}`,
+      `https://api.sociavault.com/youtube/video?url=${encodeURIComponent(normalizedUrl)}`,
       { method: 'GET', headers }
     );
     if (!res.ok) return null;
@@ -230,6 +231,27 @@ function getMultiplier(contentType: string | null, multipliers: any): number {
   if (contentType === 'meme') return multipliers.meme ?? 1.0;
   if (contentType === 'announcement') return multipliers.announcement ?? 1.0;
   return 1.0;
+}
+
+function normalizeYouTubeUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    if (u.hostname === 'youtu.be') {
+      return `https://www.youtube.com/watch?v=${u.pathname.slice(1).split('/')[0]}`;
+    }
+    const liveMatch = u.pathname.match(/^\/(live|shorts)\/([^/?]+)/);
+    if (liveMatch) {
+      return `https://www.youtube.com/watch?v=${liveMatch[2]}`;
+    }
+    if (u.searchParams.get('v')) {
+      return `https://www.youtube.com/watch?v=${u.searchParams.get('v')}`;
+    }
+    const embedMatch = u.pathname.match(/^\/embed\/([^/?]+)/);
+    if (embedMatch) {
+      return `https://www.youtube.com/watch?v=${embedMatch[1]}`;
+    }
+  } catch {}
+  return url;
 }
 
 function jsonResponse(body: unknown, status = 200) {

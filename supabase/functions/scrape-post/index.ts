@@ -150,10 +150,36 @@ async function scrapeTikTok(url: string, headers: Record<string, string>): Promi
 
 // ─── YouTube ──────────────────────────────────────────────────────────────────
 
-async function scrapeYouTube(url: string, headers: Record<string, string>): Promise<ScrapeResult> {
-  const apiUrl = `https://api.sociavault.com/youtube/video?url=${encodeURIComponent(url)}`;
+function normalizeYouTubeUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    // youtu.be/ID
+    if (u.hostname === 'youtu.be') {
+      return `https://www.youtube.com/watch?v=${u.pathname.slice(1).split('/')[0]}`;
+    }
+    // youtube.com/live/ID or youtube.com/shorts/ID
+    const liveMatch = u.pathname.match(/^\/(live|shorts)\/([^/?]+)/);
+    if (liveMatch) {
+      return `https://www.youtube.com/watch?v=${liveMatch[2]}`;
+    }
+    // youtube.com/watch?v=ID (already correct)
+    if (u.searchParams.get('v')) {
+      return `https://www.youtube.com/watch?v=${u.searchParams.get('v')}`;
+    }
+    // youtube.com/embed/ID
+    const embedMatch = u.pathname.match(/^\/embed\/([^/?]+)/);
+    if (embedMatch) {
+      return `https://www.youtube.com/watch?v=${embedMatch[1]}`;
+    }
+  } catch {}
+  return url;
+}
 
-  console.log('Scraping YouTube:', url);
+async function scrapeYouTube(url: string, headers: Record<string, string>): Promise<ScrapeResult> {
+  const normalizedUrl = normalizeYouTubeUrl(url);
+  const apiUrl = `https://api.sociavault.com/youtube/video?url=${encodeURIComponent(normalizedUrl)}`;
+
+  console.log('Scraping YouTube:', normalizedUrl);
   const response = await fetch(apiUrl, { method: 'GET', headers });
 
   if (!response.ok) {
