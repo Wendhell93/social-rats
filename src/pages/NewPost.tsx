@@ -14,7 +14,8 @@ import { FormatBadge } from "@/components/FormatBadge";
 import { useToast } from "@/hooks/use-toast";
 import {
   Heart, MessageCircle, Share2, Bookmark, Loader2, CalendarIcon,
-  Plus, X, ArrowLeft, Eye, Send, MousePointerClick, Repeat2, Info
+  Plus, X, ArrowLeft, Eye, MousePointerClick, Repeat2, Info,
+  Wand2, CheckCircle, AlertTriangle
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -22,6 +23,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ContentTypePicker } from "@/components/ContentTypePicker";
+import { scrapePost } from "@/lib/scrape";
 
 export default function NewPost() {
   const navigate = useNavigate();
@@ -35,6 +37,8 @@ export default function NewPost() {
   const [multipliers, setMultipliers] = useState<ContentTypeMultipliers | null>(null);
   const [storiesWeights, setStoriesWeights] = useState<StoriesWeights | null>(null);
   const [saving, setSaving] = useState(false);
+  const [scraping, setScraping] = useState(false);
+  const [scrapeStatus, setScrapeStatus] = useState<"idle" | "success" | "manual">("idle");
   // Feed metrics
   const [metrics, setMetrics] = useState({ likes: 0, comments: 0, shares: 0, saves: 0 });
   // Stories metrics
@@ -62,10 +66,42 @@ export default function NewPost() {
     load();
   }, []);
 
+  // Reset scrape status when URL changes
+  useEffect(() => {
+    setScrapeStatus("idle");
+  }, [url]);
+
   function toggleCreator(creator: Creator) {
     setSelectedCreators(prev =>
       prev.find(c => c.id === creator.id) ? prev.filter(c => c.id !== creator.id) : [...prev, creator]
     );
+  }
+
+  async function handleScrape() {
+    if (!platform) return;
+    setScraping(true);
+    setScrapeStatus("idle");
+    try {
+      const result = await scrapePost(url);
+      if (result.success) {
+        if (result.scraped) {
+          setMetrics({ likes: result.likes, comments: result.comments, shares: result.shares, saves: result.saves });
+          if (result.title) setTitle(result.title);
+          setScrapeStatus("success");
+          toast({ title: "Métricas preenchidas automaticamente!" });
+        } else {
+          setScrapeStatus("manual");
+          toast({ title: "Preenchimento manual necessário", description: result.scrape_error || "Não foi possível extrair métricas desta URL.", variant: "destructive" });
+        }
+      } else {
+        setScrapeStatus("manual");
+        toast({ title: "Erro no scraping", description: result.error || "Tente preencher manualmente.", variant: "destructive" });
+      }
+    } catch {
+      setScrapeStatus("manual");
+      toast({ title: "Erro inesperado", description: "Preencha as métricas manualmente.", variant: "destructive" });
+    }
+    setScraping(false);
   }
 
   async function handleSave() {
@@ -170,13 +206,46 @@ export default function NewPost() {
         <Card className="bg-card border-border">
           <CardHeader className="pb-3"><CardTitle className="text-base">Link do Post *</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <Input
-              placeholder="https://www.instagram.com/p/... ou https://www.tiktok.com/@..."
-              value={url} onChange={e => setUrl(e.target.value)}
-              className="bg-input border-border"
-            />
+            <div className="flex gap-2">
+              <Input
+                placeholder="https://www.instagram.com/p/... ou https://www.tiktok.com/@..."
+                value={url} onChange={e => setUrl(e.target.value)}
+                className="bg-input border-border flex-1"
+              />
+              {platform && postFormat === "feed" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5 border-border"
+                  onClick={handleScrape}
+                  disabled={scraping}
+                  title="Buscar métricas automaticamente"
+                >
+                  {scraping
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : scrapeStatus === "success"
+                  ? <CheckCircle className="w-4 h-4 text-secondary" />
+                      : scrapeStatus === "manual"
+                        ? <AlertTriangle className="w-4 h-4 text-destructive" />
+                        : <Wand2 className="w-4 h-4" />
+                  }
+                  {scraping ? "Buscando..." : "Auto-preencher"}
+                </Button>
+              )}
+            </div>
             {platform && <PlatformBadge platform={platform} />}
             {url && !platform && <p className="text-xs text-destructive">URL não reconhecida. Use links do Instagram, TikTok, YouTube, etc.</p>}
+            {scrapeStatus === "success" && (
+              <p className="text-xs text-secondary flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5" /> Métricas preenchidas automaticamente — revise antes de salvar.
+              </p>
+            )}
+            {scrapeStatus === "manual" && (
+              <p className="text-xs text-destructive flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5" /> Não foi possível extrair métricas — preencha manualmente abaixo.
+              </p>
+            )}
           </CardContent>
         </Card>
 
