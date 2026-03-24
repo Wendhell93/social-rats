@@ -86,9 +86,19 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-4 md:p-8 animate-fade-in">
-      <div className="mb-6 md:mb-8">
-        <div className="flex items-center justify-between">
+    <div className="animate-fade-in">
+      {/* Hero Banner */}
+      <div className="relative w-full h-48 md:h-64 overflow-hidden rounded-none md:rounded-b-2xl">
+        <picture>
+          <source srcSet="/social-rats-hero.webp" type="image/webp" />
+          <img
+            src="/social-rats-hero.png"
+            alt="Social Rats"
+            className="w-full h-full object-cover object-top"
+          />
+        </picture>
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 flex items-end justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <LayoutDashboard className="w-5 h-5 text-primary" />
@@ -139,6 +149,8 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      <div className="p-4 md:p-8">
 
       {loading ? (
         <div className="grid grid-cols-3 gap-4 mb-6">
@@ -227,6 +239,7 @@ export default function Dashboard() {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }
