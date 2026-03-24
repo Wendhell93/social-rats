@@ -20,6 +20,7 @@ import ScoreSpaces from "./pages/ScoreSpaces";
 import CreationSchool from "./pages/CreationSchool";
 import MyProfile from "./pages/MyProfile";
 import Disputes from "./pages/Disputes";
+import Policies from "./pages/Policies";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -50,6 +51,7 @@ const App = () => (
                     <Route path="/awards" element={<Awards />} />
                     <Route path="/quero-pontuar" element={<ScoreSpaces />} />
                     <Route path="/escola-de-criacao" element={<CreationSchool />} />
+                    <Route path="/politicas" element={<Policies />} />
                     <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
                     <Route path="/contestacoes" element={<AdminRoute><Disputes /></AdminRoute>} />
                     <Route path="*" element={<NotFound />} />

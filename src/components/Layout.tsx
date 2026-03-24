@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, Trophy, Gift, Star, BookOpen,
-  Settings, LogIn, LogOut, Menu, MoreHorizontal, User, ShieldAlert
+  Settings, LogIn, LogOut, Menu, MoreHorizontal, User, ShieldAlert, ScrollText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +38,7 @@ const baseNavItems = [
   { to: "/quero-pontuar", icon: Star, label: "Quero Pontuar" },
   { to: "/awards", icon: Gift, label: "Prêmios e Regras" },
   { to: "/escola-de-criacao", icon: BookOpen, label: "Escola de criação" },
+  { to: "/politicas", icon: ScrollText, label: "Políticas" },
   { to: "/posts", icon: FileText, label: "Conteúdos" },
   { to: "/creators", icon: Users, label: "Criadores" },
 ];
