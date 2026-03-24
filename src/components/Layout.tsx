@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, Trophy, Gift, Star, BookOpen,
-  Settings, LogIn, LogOut, Menu, MoreHorizontal, User
+  Settings, LogIn, LogOut, Menu, MoreHorizontal, User, ShieldAlert
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import { PeriodSelector } from "@/components/PeriodSelector";
 import { AreaFilter } from "@/components/AreaFilter";
 import { useAreaFilter } from "@/contexts/AreaFilterContext";
@@ -50,7 +51,7 @@ const bottomPrimary = [
 ];
 
 function SidebarContent({ navItems, user, isAdmin, onSignOut }: {
-  navItems: typeof baseNavItems;
+  navItems: { to: string; icon: any; label: string; badge?: number }[];
   user: any;
   isAdmin: boolean;
   onSignOut: () => void;
@@ -59,7 +60,7 @@ function SidebarContent({ navItems, user, isAdmin, onSignOut }: {
   return (
     <>
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map(({ to, icon: Icon, label }) => {
+        {navItems.map(({ to, icon: Icon, label, badge }) => {
           const active = to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
           return (
             <Link
@@ -73,7 +74,12 @@ function SidebarContent({ navItems, user, isAdmin, onSignOut }: {
               )}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
-              {label}
+              <span className="flex-1">{label}</span>
+              {badge && badge > 0 ? (
+                <span className="min-w-5 h-5 px-1.5 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">
+                  {badge}
+                </span>
+              ) : null}
             </Link>
           );
         })}
@@ -125,10 +131,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { areaFilter, setAreaFilter } = useAreaFilter();
   const [topMenuOpen, setTopMenuOpen] = useState(false);
   const [bottomMenuOpen, setBottomMenuOpen] = useState(false);
+  const [pendingDisputes, setPendingDisputes] = useState(0);
+
+  // Fetch pending disputes count for admins
+  useEffect(() => {
+    if (!isAdmin) return;
+    supabase
+      .from("post_disputes")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending")
+      .then(({ count }) => setPendingDisputes(count || 0));
+  }, [isAdmin, location.pathname]);
 
   const navItems = [
     ...baseNavItems,
     ...(user ? [{ to: "/meu-perfil", icon: User, label: "Meu Perfil" }] : []),
+    ...(isAdmin ? [{ to: "/contestacoes", icon: ShieldAlert, label: "Contestações", badge: pendingDisputes }] : []),
     ...(isAdmin ? [{ to: "/settings", icon: Settings, label: "Configurações" }] : []),
   ];
 

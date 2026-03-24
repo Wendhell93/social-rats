@@ -19,6 +19,7 @@ import Settings from "./pages/Settings";
 import ScoreSpaces from "./pages/ScoreSpaces";
 import CreationSchool from "./pages/CreationSchool";
 import MyProfile from "./pages/MyProfile";
+import Disputes from "./pages/Disputes";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -50,6 +51,7 @@ const App = () => (
                     <Route path="/quero-pontuar" element={<ScoreSpaces />} />
                     <Route path="/escola-de-criacao" element={<CreationSchool />} />
                     <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
+                    <Route path="/contestacoes" element={<AdminRoute><Disputes /></AdminRoute>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Layout>

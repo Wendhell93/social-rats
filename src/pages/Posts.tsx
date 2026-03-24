@@ -11,11 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Plus, Search, Heart, MessageCircle, Share2, Bookmark, ExternalLink,
-  Trash2, Pencil, CalendarDays, FileText, Eye, Repeat2, MousePointerClick
+  Trash2, Pencil, CalendarDays, FileText, Eye, Repeat2, MousePointerClick, AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DisputeDialog } from "@/components/DisputeDialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
@@ -38,7 +39,8 @@ export default function Posts() {
   const navigate = useNavigate();
   const { inPeriod } = usePeriodFilter();
   const { matchesArea } = useAreaCreatorIds();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
+  const [disputePost, setDisputePost] = useState<{ id: string; title: string } | null>(null);
 
   async function load() {
     const { data } = await supabase
@@ -205,6 +207,17 @@ export default function Posts() {
                         </AlertDialog>
                       </div>
                     )}
+                    {user && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs gap-1 text-amber-400 hover:text-amber-300 hover:bg-amber-400/10"
+                        onClick={() => setDisputePost({ id: post.id, title: post.title || post.url })}
+                      >
+                        <AlertTriangle className="w-3 h-3" />
+                        Contestar
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -219,6 +232,15 @@ export default function Posts() {
           </div>
         )}
         </>
+      )}
+
+      {disputePost && (
+        <DisputeDialog
+          open={!!disputePost}
+          onClose={() => setDisputePost(null)}
+          postId={disputePost.id}
+          postTitle={disputePost.title}
+        />
       )}
     </div>
   );
