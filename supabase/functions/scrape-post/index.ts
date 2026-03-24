@@ -177,36 +177,51 @@ function normalizeYouTubeUrl(url: string): string {
 
 async function scrapeYouTube(url: string, headers: Record<string, string>): Promise<ScrapeResult> {
   const normalizedUrl = normalizeYouTubeUrl(url);
-  const apiUrl = `https://api.sociavault.com/youtube/video?url=${encodeURIComponent(normalizedUrl)}`;
+  
+  // Try multiple endpoint patterns
+  const endpoints = [
+    `https://api.sociavault.com/v1/scrape/youtube/video?url=${encodeURIComponent(normalizedUrl)}`,
+    `https://api.sociavault.com/youtube/video?url=${encodeURIComponent(normalizedUrl)}`,
+    `https://api.sociavault.com/v1/youtube/video?url=${encodeURIComponent(normalizedUrl)}`,
+  ];
 
-  console.log('Scraping YouTube:', normalizedUrl);
-  const response = await fetch(apiUrl, { method: 'GET', headers });
+  for (const apiUrl of endpoints) {
+    console.log('Trying YouTube endpoint:', apiUrl);
+    const response = await fetch(apiUrl, { method: 'GET', headers });
+    
+    if (response.status === 404) {
+      console.log('Got 404, trying next endpoint...');
+      continue;
+    }
 
-  if (!response.ok) {
-    const text = await response.text();
-    console.error('SociaVault YouTube error:', response.status, text);
-    return manualFallback(`SociaVault retornou status ${response.status}`);
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('SociaVault YouTube error:', response.status, text);
+      return manualFallback(`SociaVault retornou status ${response.status}`);
+    }
+
+    const json = await response.json();
+    const data = json?.data ?? json;
+
+    if (!data?.id && !data?.title) {
+      console.error('YouTube: unexpected response structure', JSON.stringify(json).slice(0, 500));
+      continue;
+    }
+
+    return {
+      success: true,
+      scraped: true,
+      likes: data.likeCountInt ?? data.like_count ?? 0,
+      comments: data.commentCountInt ?? data.comment_count ?? 0,
+      shares: 0,
+      saves: 0,
+      views: data.viewCountInt ?? data.view_count ?? 0,
+      title: (data.title || '').slice(0, 200) || null,
+      thumbnail_url: data.thumbnail ?? null,
+    };
   }
 
-  const json = await response.json();
-  const data = json?.data ?? json;
-
-  if (!data?.id) {
-    console.error('YouTube: unexpected response structure', JSON.stringify(json).slice(0, 500));
-    return manualFallback('Resposta inesperada da API do YouTube');
-  }
-
-  return {
-    success: true,
-    scraped: true,
-    likes: data.likeCountInt ?? 0,
-    comments: data.commentCountInt ?? 0,
-    shares: 0,
-    saves: 0,
-    views: data.viewCountInt ?? 0,
-    title: data.title ? data.title.slice(0, 200) : null,
-    thumbnail_url: data.thumbnail ?? null,
-  };
+  return manualFallback('Nenhum endpoint do YouTube retornou dados. Preencha manualmente.');
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

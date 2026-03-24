@@ -204,22 +204,27 @@ async function scrapeOne(url: string, platform: string, apiKey: string) {
 
   if (platform === 'youtube') {
     const normalizedUrl = normalizeYouTubeUrl(url);
-    const res = await fetch(
+    const endpoints = [
+      `https://api.sociavault.com/v1/scrape/youtube/video?url=${encodeURIComponent(normalizedUrl)}`,
       `https://api.sociavault.com/youtube/video?url=${encodeURIComponent(normalizedUrl)}`,
-      { method: 'GET', headers }
-    );
-    if (!res.ok) return null;
-    const json = await res.json();
-    const data = json?.data ?? json;
-    if (!data?.id) return null;
-    return {
-      likes: data.likeCountInt ?? 0,
-      comments: data.commentCountInt ?? 0,
-      shares: 0,
-      saves: 0,
-      views: data.viewCountInt ?? 0,
-      views_pico: 0, interactions: 0, forwards: 0, cta_clicks: 0,
-    };
+    ];
+    for (const apiUrl of endpoints) {
+      const res = await fetch(apiUrl, { method: 'GET', headers });
+      if (res.status === 404) continue;
+      if (!res.ok) return null;
+      const json = await res.json();
+      const data = json?.data ?? json;
+      if (!data?.id && !data?.title) continue;
+      return {
+        likes: data.likeCountInt ?? data.like_count ?? 0,
+        comments: data.commentCountInt ?? data.comment_count ?? 0,
+        shares: 0,
+        saves: 0,
+        views: data.viewCountInt ?? data.view_count ?? 0,
+        views_pico: 0, interactions: 0, forwards: 0, cta_clicks: 0,
+      };
+    }
+    return null;
   }
 
   return null;
