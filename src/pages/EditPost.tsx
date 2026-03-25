@@ -23,6 +23,7 @@ import { ContentTypePicker } from "@/components/ContentTypePicker";
 import { FormatBadge } from "@/components/FormatBadge";
 import { scrapePost } from "@/lib/scrape";
 import { useContentTypes } from "@/hooks/use-content-types";
+import { useAuth } from "@/contexts/AuthContext";
 
 type PostWithCreators = Post & { post_creators: { id: string; creator: Creator }[] };
 
@@ -30,6 +31,7 @@ export default function EditPost() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
   const [post, setPost] = useState<PostWithCreators | null>(null);
   const [allCreators, setAllCreators] = useState<Creator[]>([]);
   const [selectedCreators, setSelectedCreators] = useState<Creator[]>([]);
@@ -170,7 +172,7 @@ export default function EditPost() {
         <p className="text-muted-foreground text-sm mt-1 truncate">{post.url}</p>
         {(() => {
           const plat = detectPlatform(post.url);
-          return (plat === "instagram" || plat === "tiktok" || plat === "youtube") ? (
+          return isAdmin && (plat === "instagram" || plat === "tiktok" || plat === "youtube") ? (
             <div className="flex items-center gap-2 mt-3">
               <Button
                 type="button"

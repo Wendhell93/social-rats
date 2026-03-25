@@ -29,7 +29,7 @@ import { useContentTypes } from "@/hooks/use-content-types";
 export default function NewPost() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [postFormat, setPostFormat] = useState<PostFormat>("feed");
@@ -233,7 +233,7 @@ export default function NewPost() {
             {platform && (
               <div className="flex items-center gap-2 flex-wrap">
                 <PlatformBadge platform={platform} />
-                {(platform === "instagram" || platform === "tiktok" || platform === "youtube") && (
+                {isAdmin && (platform === "instagram" || platform === "tiktok" || platform === "youtube") && (
                   <Button
                     type="button"
                     size="sm"
@@ -252,7 +252,7 @@ export default function NewPost() {
                     {scraping ? "Buscando..." : scrapeStatus === "success" ? "Importado! Buscar novamente" : "Buscar métricas"}
                   </Button>
                 )}
-                {scrapeStatus === "manual" && (
+                {isAdmin && scrapeStatus === "manual" && (
                   <span className="text-xs text-amber-400 flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" /> Preencha manualmente
                   </span>
