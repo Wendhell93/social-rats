@@ -40,7 +40,7 @@ type AdminEmail = { id: string; email: string; created_at: string };
 export default function Settings() {
   const { user } = useAuth();
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
-  const [form, setForm] = useState({ likes_weight: 1, comments_weight: 3, shares_weight: 5, saves_weight: 2, views_weight: 0 });
+  const [form, setForm] = useState({ likes_weight: 1, comments_weight: 3, shares_weight: 5, saves_weight: 2, views_weight: 0, use_engagement_rate: true, no_views_factor: 0.02 });
   const { types: contentTypes, reload: reloadTypes, multipliersMap } = useContentTypes();
   const [storiesW, setStoriesW] = useState<StoriesWeights | null>(null);
   const [storiesForm, setStoriesForm] = useState({ views_pico_weight: 0.25, interactions_weight: 3, forwards_weight: 5, cta_clicks_weight: 10 });
@@ -76,7 +76,7 @@ export default function Settings() {
       ]);
       if (w) {
         setWeights(w);
-        setForm({ likes_weight: w.likes_weight, comments_weight: w.comments_weight, shares_weight: w.shares_weight, saves_weight: w.saves_weight, views_weight: w.views_weight ?? 0 });
+        setForm({ likes_weight: w.likes_weight, comments_weight: w.comments_weight, shares_weight: w.shares_weight, saves_weight: w.saves_weight, views_weight: w.views_weight ?? 0, use_engagement_rate: w.use_engagement_rate ?? true, no_views_factor: w.no_views_factor ?? 0.02 });
       }
       if (sw) {
         setStoriesW(sw as StoriesWeights);
@@ -212,7 +212,13 @@ export default function Settings() {
     setDeleteTarget(null);
   }
 
-  const exampleFeedScore = (100 * form.likes_weight + 20 * form.comments_weight + 5 * form.shares_weight + 15 * form.saves_weight + 5000 * form.views_weight);
+  const exampleInteractions = (100 * form.likes_weight + 20 * form.comments_weight + 5 * form.shares_weight + 15 * form.saves_weight);
+  const exampleFeedScore = form.use_engagement_rate
+    ? (exampleInteractions / 5000) * 100
+    : exampleInteractions + 5000 * form.views_weight;
+  const exampleCarouselScore = form.use_engagement_rate
+    ? exampleInteractions * (form.no_views_factor || 0.02)
+    : exampleInteractions;
   const exampleStoriesScore = (5000 * storiesForm.views_pico_weight + 80 * storiesForm.interactions_weight + 15 * storiesForm.forwards_weight + 10 * storiesForm.cta_clicks_weight);
 
   return (
@@ -282,6 +288,34 @@ export default function Settings() {
             </CardContent>
           </Card>
 
+          {/* Modo de Pontuação */}
+          <Card className="border-primary/30">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-primary" />
+                    Taxa de Engajamento
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {form.use_engagement_rate
+                      ? "Ativo — Vídeos: (interações ÷ views) × 100. Carrosséis (sem views): soma × fator. Detecção automática."
+                      : "Desativado — Score = soma ponderada clássica (curtidas×P + comentários×P + ...)"}
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer ml-4">
+                  <input
+                    type="checkbox"
+                    checked={form.use_engagement_rate}
+                    onChange={(e) => setForm(f => ({ ...f, use_engagement_rate: e.target.checked }))}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+                </label>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Feed — Pesos de Engajamento */}
           <Card>
             <CardHeader>
@@ -289,10 +323,14 @@ export default function Settings() {
                 <Layers className="w-4 h-4 text-primary" />
                 <span>Pesos do Feed</span>
               </CardTitle>
-              <CardDescription>Cada interação valerá X pontos no cálculo do score base.</CardDescription>
+              <CardDescription>
+                {form.use_engagement_rate
+                  ? "Pesos das interações no numerador da taxa de engajamento."
+                  : "Cada interação valerá X pontos no cálculo do score base."}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {feedWeightFields.map(({ key, label, icon: Icon, description }) => (
+              {feedWeightFields.filter(f => form.use_engagement_rate ? f.key !== "views_weight" : true).map(({ key, label, icon: Icon, description }) => (
                 <div key={key} className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
                     <Icon className="w-5 h-5 text-accent-foreground" />
@@ -311,6 +349,27 @@ export default function Settings() {
                   </div>
                 </div>
               ))}
+              {form.use_engagement_rate && (
+                <div className="pt-3 border-t border-border">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                      <BookImage className="w-5 h-5 text-amber-400" />
+                    </div>
+                    <div className="flex-1">
+                      <Label className="text-sm font-medium">Fator carrossel (sem views)</Label>
+                      <p className="text-xs text-muted-foreground">Posts sem views usam: soma ponderada × este fator. Ex: 0.02 normaliza para escala da taxa de engajamento.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number" min={0} step={0.01} className="w-20 text-center"
+                        value={form.no_views_factor}
+                        onChange={(e) => setForm((f) => ({ ...f, no_views_factor: parseFloat(e.target.value) || 0 }))}
+                      />
+                      <span className="text-xs text-muted-foreground">×</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -416,15 +475,32 @@ export default function Settings() {
                 <div className="space-y-3 w-full">
                   <div>
                     <p className="text-sm font-medium text-accent-foreground flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-primary" /> Fórmula Feed
+                      <Layers className="w-3.5 h-3.5 text-primary" /> Fórmula Feed {form.use_engagement_rate ? "(Vídeo/Reels — com views)" : ""}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Score = ((curtidas × {form.likes_weight}) + (comentários × {form.comments_weight}) + (compartilhamentos × {form.shares_weight}) + (salvamentos × {form.saves_weight}) + (views × {form.views_weight})) × tipo
+                      {form.use_engagement_rate
+                        ? `Score = ((curtidas × ${form.likes_weight} + comentários × ${form.comments_weight} + compartilhamentos × ${form.shares_weight} + salvamentos × ${form.saves_weight}) ÷ views) × 100 × tipo`
+                        : `Score = ((curtidas × ${form.likes_weight}) + (comentários × ${form.comments_weight}) + (compartilhamentos × ${form.shares_weight}) + (salvamentos × ${form.saves_weight}) + (views × ${form.views_weight})) × tipo`
+                      }
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      <strong>Exemplo</strong>: 100❤️, 20💬, 5🔁, 15🔖, 5.000👁️ sem tipo = <strong>{exampleFeedScore.toFixed(0)} pts</strong>
+                      <strong>Exemplo</strong>: 100❤️, 20💬, 5🔁, 15🔖, 5.000👁️ sem tipo = <strong>{exampleFeedScore.toFixed(1)} pts</strong>
                     </p>
                   </div>
+                  {form.use_engagement_rate && (
+                    <div className="border-t border-border pt-3">
+                      <p className="text-sm font-medium text-accent-foreground flex items-center gap-1.5">
+                        <BookImage className="w-3.5 h-3.5 text-amber-400" /> Fórmula Feed (Carrossel/Imagem — sem views)
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Score = (curtidas × {form.likes_weight} + comentários × {form.comments_weight} + compartilhamentos × {form.shares_weight} + salvamentos × {form.saves_weight}) × {form.no_views_factor} × tipo
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        <strong>Exemplo</strong>: 100❤️, 20💬, 5🔁, 15🔖, 0👁️ sem tipo = <strong>{exampleCarouselScore.toFixed(1)} pts</strong>
+                      </p>
+                      <p className="text-xs text-amber-400 mt-1">Detecção automática: views {'>'} 0 = vídeo, views = 0 = carrossel</p>
+                    </div>
+                  )}
                   <div className="border-t border-border pt-3">
                     <p className="text-sm font-medium text-accent-foreground flex items-center gap-1.5">
                       <BookImage className="w-3.5 h-3.5 text-primary" /> Fórmula Stories

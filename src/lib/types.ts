@@ -57,6 +57,8 @@ export type EngagementWeights = {
   shares_weight: number;
   saves_weight: number;
   views_weight: number;
+  use_engagement_rate: boolean;
+  no_views_factor: number;
   updated_at: string;
 };
 
@@ -110,6 +112,26 @@ export function calcScore(
   weights: EngagementWeights,
   multiplier: number = 1.0
 ): number {
+  const useER = weights.use_engagement_rate ?? false;
+
+  if (useER) {
+    const interactions =
+      metrics.likes * weights.likes_weight +
+      metrics.comments * weights.comments_weight +
+      metrics.shares * weights.shares_weight +
+      metrics.saves * weights.saves_weight;
+
+    if (metrics.views > 0) {
+      // Video/Reels: Engagement Rate = (weighted interactions / views) × 100
+      return (interactions / metrics.views) * 100 * multiplier;
+    }
+
+    // Carousel/Image (no views): weighted sum × normalizing factor
+    const factor = weights.no_views_factor ?? 0.02;
+    return interactions * factor * multiplier;
+  }
+
+  // Classic weighted sum (engagement rate off)
   const base =
     metrics.likes * weights.likes_weight +
     metrics.comments * weights.comments_weight +

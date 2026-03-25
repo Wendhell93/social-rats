@@ -99,13 +99,26 @@ Deno.serve(async (req) => {
                 + (metrics.cta_clicks ?? 0) * (storiesW?.cta_clicks_weight ?? 10);
             } else if (weights) {
               const mult = getMultiplier(post.content_type, multipliersMap);
-              score = (
-                metrics.likes * (weights.likes_weight ?? 1)
-                + metrics.comments * (weights.comments_weight ?? 3)
-                + metrics.shares * (weights.shares_weight ?? 5)
-                + metrics.saves * (weights.saves_weight ?? 2)
-                + metrics.views * (weights.views_weight ?? 0)
-              ) * mult;
+              const useER = weights.use_engagement_rate ?? false;
+
+              if (useER) {
+                const interactions =
+                  metrics.likes * (weights.likes_weight ?? 1)
+                  + metrics.comments * (weights.comments_weight ?? 3)
+                  + metrics.shares * (weights.shares_weight ?? 5)
+                  + metrics.saves * (weights.saves_weight ?? 2);
+                score = metrics.views > 0
+                  ? (interactions / metrics.views) * 100 * mult
+                  : interactions * (weights.no_views_factor ?? 0.02) * mult;
+              } else {
+                score = (
+                  metrics.likes * (weights.likes_weight ?? 1)
+                  + metrics.comments * (weights.comments_weight ?? 3)
+                  + metrics.shares * (weights.shares_weight ?? 5)
+                  + metrics.saves * (weights.saves_weight ?? 2)
+                  + metrics.views * (weights.views_weight ?? 0)
+                ) * mult;
+              }
             }
 
             await supabase.from('posts').update({
