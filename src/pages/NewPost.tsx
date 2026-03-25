@@ -48,13 +48,31 @@ export default function NewPost() {
   const [contentType, setContentType] = useState<string | null>(null);
   const [scraping, setScraping] = useState(false);
   const [scrapeStatus, setScrapeStatus] = useState<"idle" | "success" | "manual">("idle");
+  const [duplicateInfo, setDuplicateInfo] = useState<{ creator: string; date: string } | null>(null);
 
   const platform = detectPlatform(url);
   const showForm = !!platform;
 
-  // Reset scrape status when URL changes
+  // Reset scrape status and check duplicate when URL changes
   useEffect(() => {
     setScrapeStatus("idle");
+    setDuplicateInfo(null);
+    if (!url.trim() || !detectPlatform(url)) return;
+    const normalized = url.trim().split("?")[0].replace(/\/$/, "");
+    const timeout = setTimeout(async () => {
+      const { data } = await supabase
+        .from("posts")
+        .select("id, created_at, post_creators(creator:members(name))")
+        .or(`url.eq.${url.trim()},url.ilike.%${normalized}%`)
+        .limit(1);
+      if (data && data.length > 0) {
+        const dup = data[0] as any;
+        const names = dup.post_creators?.map((pc: any) => pc.creator?.name).filter(Boolean).join(", ") || "Desconhecido";
+        const date = dup.created_at ? new Date(dup.created_at).toLocaleDateString("pt-BR") : "";
+        setDuplicateInfo({ creator: names, date });
+      }
+    }, 500);
+    return () => clearTimeout(timeout);
   }, [url]);
 
   useEffect(() => {
@@ -126,6 +144,27 @@ export default function NewPost() {
   async function handleSave() {
     if (selectedCreators.length === 0) { toast({ title: "Selecione ao menos um criador", variant: "destructive" }); return; }
     if (!platform) { toast({ title: "URL inválida", variant: "destructive" }); return; }
+
+    // Check for duplicate URL
+    const normalizedUrl = url.trim().split("?")[0].replace(/\/$/, ""); // strip query params and trailing slash
+    const { data: existing } = await supabase
+      .from("posts")
+      .select("id, url, created_at, post_creators(creator:members(name))")
+      .or(`url.eq.${url.trim()},url.ilike.%${normalizedUrl}%`)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      const dup = existing[0] as any;
+      const creatorNames = dup.post_creators?.map((pc: any) => pc.creator?.name).filter(Boolean).join(", ") || "—";
+      const date = dup.created_at ? new Date(dup.created_at).toLocaleDateString("pt-BR") : "";
+      toast({
+        title: "Conteúdo já cadastrado!",
+        description: `Este link já foi registrado por ${creatorNames} em ${date}. Cada conteúdo só pode ser pontuado uma vez.`,
+        variant: "destructive",
+        duration: 8000,
+      });
+      return;
+    }
 
     // Validate stories limit: max 10 per creator per day
     if (postFormat === "stories" && postedAt) {
@@ -260,6 +299,17 @@ export default function NewPost() {
               </div>
             )}
             {url && !platform && <p className="text-xs text-destructive">URL não reconhecida. Use links do Instagram, TikTok, YouTube, etc.</p>}
+            {duplicateInfo && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-destructive">Conteúdo já cadastrado</p>
+                  <p className="text-xs text-destructive/80">
+                    Registrado por <strong>{duplicateInfo.creator}</strong> em {duplicateInfo.date}. Cada conteúdo só pode ser pontuado uma vez.
+                  </p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -457,7 +507,7 @@ export default function NewPost() {
         <div className="flex gap-3">
           <Button variant="outline" className="border-border" onClick={() => navigate(-1)}>Cancelar</Button>
           {showForm && (
-            <Button onClick={handleSave} disabled={saving || selectedCreators.length === 0} className="gradient-primary text-white border-0 glow-blue">
+            <Button onClick={handleSave} disabled={saving || selectedCreators.length === 0 || !!duplicateInfo} className="gradient-primary text-white border-0 glow-blue">
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Salvar Post
             </Button>
