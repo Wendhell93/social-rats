@@ -8,7 +8,6 @@ export type Creator = {
   creator_areas?: { area: Area }[];
 };
 
-// Alias for backward compat
 export type Member = Creator;
 
 export type Area = {
@@ -59,6 +58,7 @@ export type EngagementWeights = {
   views_weight: number;
   use_engagement_rate: boolean;
   no_views_factor: number;
+  engagement_bonus_factor: number;
   updated_at: string;
 };
 
@@ -82,9 +82,9 @@ export type StoriesWeights = {
 export type ContentType = "technical" | "meme" | "announcement" | null;
 
 export const CONTENT_TYPE_LABELS: Record<string, string> = {
-  technical: "Técnico",
+  technical: "Tecnico",
   meme: "Meme",
-  announcement: "Anúncio",
+  announcement: "Anuncio",
 };
 
 export type RankedCreator = Creator & {
@@ -107,51 +107,37 @@ export function detectPlatform(url: string): string | null {
   return null;
 }
 
+/**
+ * Unified scoring formula:
+ *   base = likes*w + comments*w + shares*w + saves*w
+ *   bonus = (base / views) * engagement_bonus_factor  (only when views > 0)
+ *   score = (base + bonus) * type_multiplier
+ */
 export function calcScore(
   metrics: { likes: number; comments: number; shares: number; saves: number; views: number },
   weights: EngagementWeights,
   multiplier: number = 1.0
 ): number {
-  const useER = weights.use_engagement_rate ?? false;
-
-  if (useER) {
-    const interactions =
-      metrics.likes * weights.likes_weight +
-      metrics.comments * weights.comments_weight +
-      metrics.shares * weights.shares_weight +
-      metrics.saves * weights.saves_weight;
-
-    if (metrics.views > 0) {
-      // Video/Reels: Engagement Rate = (weighted interactions / views) × 100
-      return (interactions / metrics.views) * 100 * multiplier;
-    }
-
-    // Carousel/Image (no views): weighted sum × normalizing factor
-    const factor = weights.no_views_factor ?? 0.02;
-    return interactions * factor * multiplier;
-  }
-
-  // Classic weighted sum (engagement rate off)
   const base =
     metrics.likes * weights.likes_weight +
     metrics.comments * weights.comments_weight +
     metrics.shares * weights.shares_weight +
-    metrics.saves * weights.saves_weight +
-    metrics.views * weights.views_weight;
-  return base * multiplier;
+    metrics.saves * weights.saves_weight;
+
+  const bonusFactor = weights.engagement_bonus_factor ?? 100;
+  const bonus = metrics.views > 0
+    ? (base / metrics.views) * bonusFactor
+    : 0;
+
+  return (base + bonus) * multiplier;
 }
 
+/** @deprecated Stories abolished - kept for compile compat */
 export function calcScoreStories(
   metrics: { views_pico: number; interactions: number; forwards: number; cta_clicks: number },
   weights?: Pick<StoriesWeights, "views_pico_weight" | "interactions_weight" | "forwards_weight" | "cta_clicks_weight">
 ): number {
-  const w = weights ?? { views_pico_weight: 0.25, interactions_weight: 3, forwards_weight: 5, cta_clicks_weight: 10 };
-  return (
-    metrics.views_pico * w.views_pico_weight +
-    metrics.interactions * w.interactions_weight +
-    metrics.forwards * w.forwards_weight +
-    metrics.cta_clicks * w.cta_clicks_weight
-  );
+  return 0;
 }
 
 export function getMultiplier(
@@ -159,12 +145,10 @@ export function getMultiplier(
   multipliers: ContentTypeMultipliers | Record<string, number> | null
 ): number {
   if (!contentType || !multipliers) return 1.0;
-  // Support dynamic map (from content_types table)
   if (contentType in multipliers) {
     const val = (multipliers as any)[contentType];
     if (typeof val === "number") return val;
   }
-  // Legacy columns
   if (contentType === "technical" && "technical" in multipliers) return (multipliers as any).technical;
   if (contentType === "meme" && "meme" in multipliers) return (multipliers as any).meme;
   if (contentType === "announcement" && "announcement" in multipliers) return (multipliers as any).announcement;

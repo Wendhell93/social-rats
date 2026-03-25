@@ -64,10 +64,9 @@ Deno.serve(async (req) => {
     console.log(`Refreshing metrics for ${posts.length} posts (last ${daysBack} days)`);
 
     // Fetch weights for score recalculation
-    const [{ data: weights }, { data: contentTypes }, { data: storiesW }] = await Promise.all([
+    const [{ data: weights }, { data: contentTypes }] = await Promise.all([
       supabase.from('engagement_weights').select('*').limit(1).single(),
       supabase.from('content_types').select('key, multiplier'),
-      supabase.from('stories_weights').select('*').limit(1).single(),
     ]);
 
     // Build multipliers map from content_types table
@@ -90,35 +89,20 @@ Deno.serve(async (req) => {
             const metrics = await scrapeOne(post.url, post.platform, sociavaultKey);
             if (!metrics) return false;
 
-            // Calculate new score
+            // Calculate new score using unified formula
             let score = 0;
-            if (post.format === 'stories') {
-              score = (metrics.views_pico ?? 0) * (storiesW?.views_pico_weight ?? 0.25)
-                + (metrics.interactions ?? 0) * (storiesW?.interactions_weight ?? 3)
-                + (metrics.forwards ?? 0) * (storiesW?.forwards_weight ?? 5)
-                + (metrics.cta_clicks ?? 0) * (storiesW?.cta_clicks_weight ?? 10);
-            } else if (weights) {
+            if (weights) {
               const mult = getMultiplier(post.content_type, multipliersMap);
-              const useER = weights.use_engagement_rate ?? false;
-
-              if (useER) {
-                const interactions =
-                  metrics.likes * (weights.likes_weight ?? 1)
-                  + metrics.comments * (weights.comments_weight ?? 3)
-                  + metrics.shares * (weights.shares_weight ?? 5)
-                  + metrics.saves * (weights.saves_weight ?? 2);
-                score = metrics.views > 0
-                  ? (interactions / metrics.views) * 100 * mult
-                  : interactions * (weights.no_views_factor ?? 0.02) * mult;
-              } else {
-                score = (
-                  metrics.likes * (weights.likes_weight ?? 1)
-                  + metrics.comments * (weights.comments_weight ?? 3)
-                  + metrics.shares * (weights.shares_weight ?? 5)
-                  + metrics.saves * (weights.saves_weight ?? 2)
-                  + metrics.views * (weights.views_weight ?? 0)
-                ) * mult;
-              }
+              const base =
+                metrics.likes * (weights.likes_weight ?? 1)
+                + metrics.comments * (weights.comments_weight ?? 3)
+                + metrics.shares * (weights.shares_weight ?? 5)
+                + metrics.saves * (weights.saves_weight ?? 2);
+              const bonusFactor = weights.engagement_bonus_factor ?? 100;
+              const bonus = metrics.views > 0
+                ? (base / metrics.views) * bonusFactor
+                : 0;
+              score = (base + bonus) * mult;
             }
 
             await supabase.from('posts').update({
