@@ -64,11 +64,19 @@ Deno.serve(async (req) => {
     console.log(`Refreshing metrics for ${posts.length} posts (last ${daysBack} days)`);
 
     // Fetch weights for score recalculation
-    const [{ data: weights }, { data: multipliers }, { data: storiesW }] = await Promise.all([
+    const [{ data: weights }, { data: contentTypes }, { data: storiesW }] = await Promise.all([
       supabase.from('engagement_weights').select('*').limit(1).single(),
-      supabase.from('content_type_multipliers').select('*').limit(1).single(),
+      supabase.from('content_types').select('key, multiplier'),
       supabase.from('stories_weights').select('*').limit(1).single(),
     ]);
+
+    // Build multipliers map from content_types table
+    const multipliersMap: Record<string, number> = {};
+    if (contentTypes) {
+      for (const ct of contentTypes) {
+        multipliersMap[ct.key] = ct.multiplier;
+      }
+    }
 
     let updated = 0;
     let failed = 0;
@@ -90,7 +98,7 @@ Deno.serve(async (req) => {
                 + (metrics.forwards ?? 0) * (storiesW?.forwards_weight ?? 5)
                 + (metrics.cta_clicks ?? 0) * (storiesW?.cta_clicks_weight ?? 10);
             } else if (weights) {
-              const mult = getMultiplier(post.content_type, multipliers);
+              const mult = getMultiplier(post.content_type, multipliersMap);
               score = (
                 metrics.likes * (weights.likes_weight ?? 1)
                 + metrics.comments * (weights.comments_weight ?? 3)
@@ -230,12 +238,9 @@ async function scrapeOne(url: string, platform: string, apiKey: string) {
   return null;
 }
 
-function getMultiplier(contentType: string | null, multipliers: any): number {
-  if (!contentType || !multipliers) return 1.0;
-  if (contentType === 'technical') return multipliers.technical ?? 1.0;
-  if (contentType === 'meme') return multipliers.meme ?? 1.0;
-  if (contentType === 'announcement') return multipliers.announcement ?? 1.0;
-  return 1.0;
+function getMultiplier(contentType: string | null, multipliersMap: Record<string, number>): number {
+  if (!contentType || !multipliersMap) return 1.0;
+  return multipliersMap[contentType] ?? 1.0;
 }
 
 function normalizeYouTubeUrl(url: string): string {

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   detectPlatform, calcScore, calcScoreStories, getMultiplier,
-  EngagementWeights, ContentTypeMultipliers, StoriesWeights, Creator, CONTENT_TYPE_LABELS, PostFormat
+  EngagementWeights, StoriesWeights, Creator, PostFormat
 } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { ContentTypePicker } from "@/components/ContentTypePicker";
 import { scrapePost } from "@/lib/scrape";
 import { useAuth } from "@/contexts/AuthContext";
+import { useContentTypes } from "@/hooks/use-content-types";
 
 export default function NewPost() {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export default function NewPost() {
   const [selectedCreators, setSelectedCreators] = useState<Creator[]>([]);
   const [creators, setCreators] = useState<Creator[]>([]);
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
-  const [multipliers, setMultipliers] = useState<ContentTypeMultipliers | null>(null);
+  const { types: contentTypes, multipliersMap } = useContentTypes();
   const [storiesWeights, setStoriesWeights] = useState<StoriesWeights | null>(null);
   const [saving, setSaving] = useState(false);
   // Feed metrics
@@ -58,22 +59,19 @@ export default function NewPost() {
 
   useEffect(() => {
     async function load() {
-      const [{ data: m }, { data: w }, { data: mp }, { data: sw }] = await Promise.all([
+      const [{ data: m }, { data: w }, { data: sw }] = await Promise.all([
         supabase.from("members").select("*").order("name"),
         supabase.from("engagement_weights").select("*").limit(1).single(),
-        supabase.from("content_type_multipliers").select("*").limit(1).single(),
         (supabase as any).from("stories_weights").select("*").limit(1).single(),
       ]);
       if (m) {
         setCreators(m);
-        // Pre-select logged user's profile
         if (profile) {
           const me = m.find((c: Creator) => c.id === profile.id);
           if (me) setSelectedCreators([me]);
         }
       }
       if (w) setWeights(w);
-      if (mp) setMultipliers(mp as ContentTypeMultipliers);
       if (sw) setStoriesWeights(sw as StoriesWeights);
     }
     load();
@@ -162,7 +160,7 @@ export default function NewPost() {
     if (postFormat === "stories") {
       score = calcScoreStories(storiesMetrics, storiesWeights ?? undefined);
     } else {
-      const mult = getMultiplier(contentType, multipliers);
+      const mult = getMultiplier(contentType, multipliersMap);
       score = weights ? calcScore(metrics, weights, mult) : 0;
     }
 
@@ -201,7 +199,7 @@ export default function NewPost() {
     setSaving(false);
   }
 
-  const mult = getMultiplier(contentType, multipliers);
+  const mult = getMultiplier(contentType, multipliersMap);
   const previewScore = postFormat === "stories"
     ? calcScoreStories(storiesMetrics, storiesWeights ?? undefined)
     : (weights ? calcScore(metrics, weights, mult) : 0);
@@ -315,7 +313,7 @@ export default function NewPost() {
               <Card className="bg-card border-border">
                 <CardHeader className="pb-3"><CardTitle className="text-base">Tipo de Conteúdo</CardTitle></CardHeader>
                 <CardContent>
-                  <ContentTypePicker value={contentType} onChange={setContentType} multipliers={multipliers} />
+                  <ContentTypePicker value={contentType} onChange={setContentType} types={contentTypes} />
                 </CardContent>
               </Card>
             )}
@@ -445,7 +443,7 @@ export default function NewPost() {
                     <span className="text-sm text-muted-foreground">Score calculado</span>
                     {postFormat === "feed" && contentType && mult !== 1.0 && (
                       <span className="ml-2 text-xs text-muted-foreground">
-                        (×{mult} {CONTENT_TYPE_LABELS[contentType]})
+                        (×{mult} {contentTypes.find(t => t.key === contentType)?.label || contentType})
                       </span>
                     )}
                   </div>

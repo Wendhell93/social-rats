@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Post, Creator, EngagementWeights, ContentTypeMultipliers, StoriesWeights,
-  calcScore, calcScoreStories, getMultiplier, CONTENT_TYPE_LABELS, PostFormat, detectPlatform
+  Post, Creator, EngagementWeights, StoriesWeights,
+  calcScore, calcScoreStories, getMultiplier, PostFormat, detectPlatform
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { ContentTypePicker } from "@/components/ContentTypePicker";
 import { FormatBadge } from "@/components/FormatBadge";
 import { scrapePost } from "@/lib/scrape";
+import { useContentTypes } from "@/hooks/use-content-types";
 
 type PostWithCreators = Post & { post_creators: { id: string; creator: Creator }[] };
 
@@ -33,7 +34,7 @@ export default function EditPost() {
   const [allCreators, setAllCreators] = useState<Creator[]>([]);
   const [selectedCreators, setSelectedCreators] = useState<Creator[]>([]);
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
-  const [multipliers, setMultipliers] = useState<ContentTypeMultipliers | null>(null);
+  const { types: contentTypes, multipliersMap } = useContentTypes();
   const [storiesWeights, setStoriesWeights] = useState<StoriesWeights | null>(null);
   const [postFormat, setPostFormat] = useState<PostFormat>("feed");
   const [metrics, setMetrics] = useState({ likes: 0, comments: 0, shares: 0, saves: 0, views: 0 });
@@ -78,11 +79,10 @@ export default function EditPost() {
 
   useEffect(() => {
     async function load() {
-      const [{ data: p }, { data: c }, { data: w }, { data: mp }, { data: sw }] = await Promise.all([
+      const [{ data: p }, { data: c }, { data: w }, { data: sw }] = await Promise.all([
         supabase.from("posts").select("*, post_creators(id, creator:members(*))").eq("id", id!).single(),
         supabase.from("members").select("*").order("name"),
         supabase.from("engagement_weights").select("*").limit(1).single(),
-        supabase.from("content_type_multipliers").select("*").limit(1).single(),
         (supabase as any).from("stories_weights").select("*").limit(1).single(),
       ]);
       if (p) {
@@ -102,7 +102,6 @@ export default function EditPost() {
       }
       if (c) setAllCreators(c);
       if (w) setWeights(w);
-      if (mp) setMultipliers(mp as ContentTypeMultipliers);
       if (sw) setStoriesWeights(sw as StoriesWeights);
     }
     load();
@@ -123,7 +122,7 @@ export default function EditPost() {
     if (postFormat === "stories") {
       score = calcScoreStories(storiesMetrics, storiesWeights ?? undefined);
     } else {
-      const mult = getMultiplier(contentType, multipliers);
+      const mult = getMultiplier(contentType, multipliersMap);
       score = weights ? calcScore(metrics, weights, mult) : post.score;
     }
 
@@ -149,7 +148,7 @@ export default function EditPost() {
     setSaving(false);
   }
 
-  const mult = getMultiplier(contentType, multipliers);
+  const mult = getMultiplier(contentType, multipliersMap);
   const previewScore = postFormat === "stories"
     ? calcScoreStories(storiesMetrics, storiesWeights ?? undefined)
     : (weights ? calcScore(metrics, weights, mult) : 0);
@@ -269,7 +268,7 @@ export default function EditPost() {
           <Card className="bg-card border-border">
             <CardHeader className="pb-3"><CardTitle className="text-base">Tipo de Conteúdo</CardTitle></CardHeader>
             <CardContent>
-              <ContentTypePicker value={contentType} onChange={setContentType} multipliers={multipliers} />
+              <ContentTypePicker value={contentType} onChange={setContentType} types={contentTypes} />
             </CardContent>
           </Card>
         )}
@@ -354,7 +353,7 @@ export default function EditPost() {
                 <span className="text-sm text-muted-foreground">Score calculado</span>
                 {postFormat === "feed" && contentType && mult !== 1.0 && (
                   <span className="ml-2 text-xs text-muted-foreground">
-                    (×{mult} {CONTENT_TYPE_LABELS[contentType]})
+                    (×{mult} {contentTypes.find(t => t.key === contentType)?.label || contentType})
                   </span>
                 )}
               </div>

@@ -1,35 +1,27 @@
-import { ContentTypeMultipliers, CONTENT_TYPE_LABELS } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
-const OPTIONS = [
-  { value: null, label: "Nenhum", emoji: "—" },
-  { value: "technical", label: "Técnico", emoji: "🔧" },
-  { value: "meme", label: "Meme", emoji: "😂" },
-  { value: "announcement", label: "Anúncio", emoji: "📣" },
-] as const;
+import { ContentTypeConfig } from "@/hooks/use-content-types";
 
 interface ContentTypePickerProps {
   value: string | null;
   onChange: (value: string | null) => void;
-  multipliers: ContentTypeMultipliers | null;
+  types: ContentTypeConfig[];
 }
 
-export function ContentTypePicker({ value, onChange, multipliers }: ContentTypePickerProps) {
-  function getMultLabel(v: string | null): string {
-    if (!v || !multipliers) return "1×";
-    const m = multipliers[v as keyof Pick<ContentTypeMultipliers, "technical" | "meme" | "announcement">];
-    return `${m}×`;
-  }
+export function ContentTypePicker({ value, onChange, types }: ContentTypePickerProps) {
+  const options = [
+    { key: null as string | null, label: "Nenhum", emoji: "—", multiplier: 1 },
+    ...types.map(t => ({ key: t.key, label: t.label, emoji: t.emoji, multiplier: t.multiplier })),
+  ];
 
   return (
-    <div className="grid grid-cols-4 gap-2">
-      {OPTIONS.map((opt) => {
-        const active = value === opt.value;
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {options.map((opt) => {
+        const active = value === opt.key;
         return (
           <button
-            key={String(opt.value)}
+            key={String(opt.key)}
             type="button"
-            onClick={() => onChange(opt.value)}
+            onClick={() => onChange(opt.key)}
             className={cn(
               "flex flex-col items-center justify-center gap-1 rounded-xl border px-3 py-3 text-sm transition-all",
               active
@@ -39,9 +31,9 @@ export function ContentTypePicker({ value, onChange, multipliers }: ContentTypeP
           >
             <span className="text-lg leading-none">{opt.emoji}</span>
             <span className="text-xs font-medium">{opt.label}</span>
-            {opt.value !== null && (
+            {opt.key !== null && (
               <span className={cn("text-xs", active ? "text-primary/70" : "text-muted-foreground/60")}>
-                {getMultLabel(opt.value)}
+                {opt.multiplier}×
               </span>
             )}
           </button>

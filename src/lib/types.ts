@@ -134,11 +134,17 @@ export function calcScoreStories(
 
 export function getMultiplier(
   contentType: string | null,
-  multipliers: ContentTypeMultipliers | null
+  multipliers: ContentTypeMultipliers | Record<string, number> | null
 ): number {
   if (!contentType || !multipliers) return 1.0;
-  if (contentType === "technical") return multipliers.technical;
-  if (contentType === "meme") return multipliers.meme;
-  if (contentType === "announcement") return multipliers.announcement;
+  // Support dynamic map (from content_types table)
+  if (contentType in multipliers) {
+    const val = (multipliers as any)[contentType];
+    if (typeof val === "number") return val;
+  }
+  // Legacy columns
+  if (contentType === "technical" && "technical" in multipliers) return (multipliers as any).technical;
+  if (contentType === "meme" && "meme" in multipliers) return (multipliers as any).meme;
+  if (contentType === "announcement" && "announcement" in multipliers) return (multipliers as any).announcement;
   return 1.0;
 }

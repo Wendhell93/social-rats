@@ -1,20 +1,24 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { EngagementWeights, ContentTypeMultipliers, StoriesWeights, calcScore, calcScoreStories, getMultiplier } from "@/lib/types";
+import { EngagementWeights, StoriesWeights, calcScore, calcScoreStories, getMultiplier } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useContentTypes, ContentTypeConfig } from "@/hooks/use-content-types";
 import {
   Heart, MessageCircle, Share2, Bookmark, Save, Info, Layers, Loader2,
-  Eye, Repeat2, MousePointerClick, BookImage, UserPlus, Trash2, ShieldCheck, Mail, Building2
+  Eye, Repeat2, MousePointerClick, BookImage, UserPlus, Trash2, ShieldCheck, Mail, Building2, Plus, Pencil
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
 
 const feedWeightFields = [
   { key: "likes_weight", label: "Curtidas", icon: Heart, description: "Peso por curtida" },
@@ -31,24 +35,24 @@ const storiesWeightFields = [
   { key: "cta_clicks_weight", label: "Cliques no Link", icon: MousePointerClick, description: "Cliques no CTA/link do story" },
 ] as const;
 
-const multiplierFields = [
-  { key: "technical", label: "Técnico", emoji: "🔧", description: "Posts educativos, tutoriais, dicas" },
-  { key: "meme", label: "Meme", emoji: "😂", description: "Posts humorísticos, entretenimento" },
-  { key: "announcement", label: "Anúncio", emoji: "📣", description: "Posts patrocinados, publicidade" },
-] as const;
-
 type AdminEmail = { id: string; email: string; created_at: string };
 
 export default function Settings() {
   const { user } = useAuth();
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
   const [form, setForm] = useState({ likes_weight: 1, comments_weight: 3, shares_weight: 5, saves_weight: 2, views_weight: 0 });
-  const [multipliers, setMultipliers] = useState<ContentTypeMultipliers | null>(null);
-  const [multForm, setMultForm] = useState({ technical: 1.0, meme: 1.0, announcement: 1.0 });
+  const { types: contentTypes, reload: reloadTypes, multipliersMap } = useContentTypes();
   const [storiesW, setStoriesW] = useState<StoriesWeights | null>(null);
   const [storiesForm, setStoriesForm] = useState({ views_pico_weight: 0.25, interactions_weight: 3, forwards_weight: 5, cta_clicks_weight: 10 });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Content type CRUD
+  const [ctDialogOpen, setCtDialogOpen] = useState(false);
+  const [ctEdit, setCtEdit] = useState<ContentTypeConfig | null>(null);
+  const [ctForm, setCtForm] = useState({ key: "", label: "", emoji: "", description: "", multiplier: 1 });
+  const [ctSaving, setCtSaving] = useState(false);
+  const [ctDeleteTarget, setCtDeleteTarget] = useState<ContentTypeConfig | null>(null);
 
   // Admin management
   const [adminEmails, setAdminEmails] = useState<AdminEmail[]>([]);
@@ -64,9 +68,8 @@ export default function Settings() {
 
   useEffect(() => {
     async function load() {
-      const [{ data: w }, { data: m }, { data: sw }, { data: ae }, { data: ar }] = await Promise.all([
+      const [{ data: w }, { data: sw }, { data: ae }, { data: ar }] = await Promise.all([
         supabase.from("engagement_weights").select("*").limit(1).single(),
-        supabase.from("content_type_multipliers").select("*").limit(1).single(),
         (supabase as any).from("stories_weights").select("*").limit(1).single(),
         (supabase as any).from("admin_emails").select("*").order("created_at", { ascending: true }),
         supabase.from("areas").select("*").order("name"),
@@ -74,10 +77,6 @@ export default function Settings() {
       if (w) {
         setWeights(w);
         setForm({ likes_weight: w.likes_weight, comments_weight: w.comments_weight, shares_weight: w.shares_weight, saves_weight: w.saves_weight, views_weight: w.views_weight ?? 0 });
-      }
-      if (m) {
-        setMultipliers(m as ContentTypeMultipliers);
-        setMultForm({ technical: m.technical, meme: m.meme, announcement: m.announcement });
       }
       if (sw) {
         setStoriesW(sw as StoriesWeights);
@@ -96,12 +95,11 @@ export default function Settings() {
   }, []);
 
   async function handleSave() {
-    if (!weights || !multipliers) return;
+    if (!weights) return;
     setSaving(true);
 
     const promises: Promise<{ error: any }>[] = [
       supabase.from("engagement_weights").update({ ...form, updated_at: new Date().toISOString() }).eq("id", weights.id) as unknown as Promise<{ error: any }>,
-      supabase.from("content_type_multipliers").update({ ...multForm, updated_at: new Date().toISOString() }).eq("id", multipliers.id) as unknown as Promise<{ error: any }>,
     ];
     if (storiesW) {
       promises.push(
@@ -130,7 +128,7 @@ export default function Settings() {
             { ...storiesW!, ...storiesForm }
           );
         } else {
-          const mult = getMultiplier(p.content_type ?? null, { ...multipliers, ...multForm });
+          const mult = getMultiplier(p.content_type ?? null, multipliersMap);
           score = calcScore(
             { likes: p.likes, comments: p.comments, shares: p.shares, saves: p.saves, views: p.views ?? 0 },
             { ...weights, ...form },
@@ -356,34 +354,54 @@ export default function Settings() {
           {/* Multiplicadores por Tipo */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Layers className="w-4 h-4 text-primary" />
-                Multiplicadores por Tipo de Conteúdo (Feed)
-              </CardTitle>
-              <CardDescription>
-                O score final do Feed é multiplicado pelo fator do tipo. Ex: Meme = 0,5× reduz a pontuação pela metade.
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-primary" />
+                    Multiplicadores por Tipo de Conteúdo (Feed)
+                  </CardTitle>
+                  <CardDescription>
+                    O score final do Feed é multiplicado pelo fator do tipo. Adicione, edite ou remova tipos.
+                  </CardDescription>
+                </div>
+                <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => {
+                  setCtEdit(null);
+                  setCtForm({ key: "", label: "", emoji: "", description: "", multiplier: 1 });
+                  setCtDialogOpen(true);
+                }}>
+                  <Plus className="w-3.5 h-3.5" /> Novo tipo
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {multiplierFields.map(({ key, label, emoji, description }) => (
-                <div key={key} className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center flex-shrink-0 text-lg">
-                    {emoji}
+              {contentTypes.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum tipo cadastrado. Clique em "Novo tipo" para criar.</p>
+              ) : (
+                contentTypes.map((ct) => (
+                  <div key={ct.id} className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center flex-shrink-0 text-lg">
+                      {ct.emoji || "📝"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Label className="text-sm font-medium">{ct.label}</Label>
+                      <p className="text-xs text-muted-foreground truncate">{ct.description}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-sm font-bold text-primary">{ct.multiplier}×</span>
+                      <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-primary" onClick={() => {
+                        setCtEdit(ct);
+                        setCtForm({ key: ct.key, label: ct.label, emoji: ct.emoji, description: ct.description, multiplier: ct.multiplier });
+                        setCtDialogOpen(true);
+                      }}>
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="w-8 h-8 text-destructive hover:text-destructive" onClick={() => setCtDeleteTarget(ct)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <Label className="text-sm font-medium">{label}</Label>
-                    <p className="text-xs text-muted-foreground">{description}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number" min={0} step={0.1} className="w-20 text-center"
-                      value={multForm[key]}
-                      onChange={(e) => setMultForm((f) => ({ ...f, [key]: parseFloat(e.target.value) || 0 }))}
-                    />
-                    <span className="text-xs text-muted-foreground">×</span>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
               <p className="text-xs text-muted-foreground pt-1">
                 Posts sem tipo classificado usam multiplicador <strong>1×</strong> (neutro).
               </p>
@@ -507,6 +525,85 @@ export default function Settings() {
                 setAreas(prev => prev.filter(x => x.id !== deleteAreaTarget.id));
                 setDeleteAreaTarget(null);
                 toast({ title: "Área removida" });
+              }}
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Content Type Create/Edit Dialog */}
+      <Dialog open={ctDialogOpen} onOpenChange={(v) => { if (!v) setCtDialogOpen(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{ctEdit ? "Editar Tipo de Conteúdo" : "Novo Tipo de Conteúdo"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm mb-1.5 block">Nome *</Label>
+                <Input placeholder="Ex: Tutorial" value={ctForm.label} onChange={e => setCtForm(f => ({ ...f, label: e.target.value }))} className="bg-input border-border" />
+              </div>
+              <div>
+                <Label className="text-sm mb-1.5 block">Emoji</Label>
+                <Input placeholder="Ex: 🔧" value={ctForm.emoji} onChange={e => setCtForm(f => ({ ...f, emoji: e.target.value }))} className="bg-input border-border" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm mb-1.5 block">Descrição</Label>
+              <Input placeholder="Ex: Posts educativos, dicas" value={ctForm.description} onChange={e => setCtForm(f => ({ ...f, description: e.target.value }))} className="bg-input border-border" />
+            </div>
+            <div>
+              <Label className="text-sm mb-1.5 block">Multiplicador *</Label>
+              <Input type="number" min={0} step={0.1} value={ctForm.multiplier} onChange={e => setCtForm(f => ({ ...f, multiplier: parseFloat(e.target.value) || 0 }))} className="bg-input border-border w-32" />
+              <p className="text-xs text-muted-foreground mt-1">1.0 = neutro, 1.5 = bônus de 50%, 0.5 = reduz pela metade</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCtDialogOpen(false)} disabled={ctSaving}>Cancelar</Button>
+            <Button disabled={ctSaving || !ctForm.label.trim()} onClick={async () => {
+              setCtSaving(true);
+              const key = ctEdit ? ctEdit.key : ctForm.label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+              const payload = { key, label: ctForm.label.trim(), emoji: ctForm.emoji.trim() || "📝", description: ctForm.description.trim(), multiplier: ctForm.multiplier };
+              const { error } = ctEdit
+                ? await supabase.from("content_types").update(payload).eq("id", ctEdit.id)
+                : await supabase.from("content_types").insert(payload);
+              if (error) {
+                toast({ title: "Erro", description: error.message, variant: "destructive" });
+              } else {
+                toast({ title: ctEdit ? "Tipo atualizado!" : "Tipo criado!" });
+                setCtDialogOpen(false);
+                reloadTypes();
+              }
+              setCtSaving(false);
+            }}>
+              {ctSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {ctEdit ? "Salvar" : "Criar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Content Type Confirmation */}
+      <AlertDialog open={!!ctDeleteTarget} onOpenChange={(open) => { if (!open) setCtDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover tipo de conteúdo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O tipo <strong>"{ctDeleteTarget?.label}"</strong> será removido. Posts que usam esse tipo terão multiplicador neutro (1×).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!ctDeleteTarget) return;
+                await supabase.from("content_types").delete().eq("id", ctDeleteTarget.id);
+                setCtDeleteTarget(null);
+                reloadTypes();
+                toast({ title: "Tipo removido" });
               }}
             >
               Remover
