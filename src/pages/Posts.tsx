@@ -84,7 +84,7 @@ export default function Posts() {
           </div>
           <p className="text-muted-foreground text-sm">{filtered.length} posts{filtered.length !== posts.length ? ` de ${posts.length}` : ""}</p>
         </div>
-        {isAdmin && (
+        {user && (
           <Button asChild className="gradient-primary text-white border-0 glow-blue flex-shrink-0">
             <Link to="/posts/new"><Plus className="w-4 h-4 mr-1 md:mr-2" /> <span className="hidden sm:inline">Novo Post</span><span className="sm:hidden">Novo</span></Link>
           </Button>
@@ -130,7 +130,7 @@ export default function Posts() {
         <div className="text-center py-20">
           <FileText className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
           <p className="text-muted-foreground mb-4">{search ? "Nenhum resultado." : "Nenhum post cadastrado ainda."}</p>
-          {!search && isAdmin && <Button asChild className="gradient-primary text-white border-0"><Link to="/posts/new">Cadastrar primeiro post</Link></Button>}
+          {!search && user && <Button asChild className="gradient-primary text-white border-0"><Link to="/posts/new">Cadastrar primeiro post</Link></Button>}
         </div>
       ) : (
         <>
