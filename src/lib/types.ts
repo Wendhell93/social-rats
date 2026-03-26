@@ -18,6 +18,13 @@ export type Area = {
 
 export type PostFormat = "feed" | "stories";
 
+export type MediaType = "static" | "video";
+
+export const MEDIA_TYPE_LABELS: Record<MediaType, string> = {
+  static: "Estático",
+  video: "Vídeo",
+};
+
 export type Post = {
   id: string;
   member_id: string | null;
@@ -35,6 +42,7 @@ export type Post = {
   created_at: string;
   content_type: string | null;
   format: PostFormat;
+  media_type: MediaType;
   views_pico: number;
   interactions: number;
   forwards: number;
@@ -108,6 +116,27 @@ export function detectPlatform(url: string): string | null {
 }
 
 /**
+ * Detect media type (static or video) from URL + platform.
+ * - Instagram: /reel/ or /reels/ → video, else static
+ * - TikTok: always video
+ * - YouTube: always video
+ * - Twitter/LinkedIn/others: default static
+ */
+export function detectMediaType(url: string, platform: string | null): MediaType {
+  if (!url || !platform) return "static";
+  switch (platform) {
+    case "instagram":
+      return /\/(reel|reels)\//i.test(url) ? "video" : "static";
+    case "tiktok":
+      return "video";
+    case "youtube":
+      return "video";
+    default:
+      return "static";
+  }
+}
+
+/**
  * Unified scoring formula:
  *   base = likes*w + comments*w + shares*w + saves*w
  *   bonus = (base / views) * engagement_bonus_factor  (only when views > 0)
@@ -116,7 +145,8 @@ export function detectPlatform(url: string): string | null {
 export function calcScore(
   metrics: { likes: number; comments: number; shares: number; saves: number; views: number },
   weights: EngagementWeights,
-  multiplier: number = 1.0
+  multiplier: number = 1.0,
+  mediaMultiplier: number = 1.0
 ): number {
   const base =
     metrics.likes * weights.likes_weight +
@@ -129,7 +159,7 @@ export function calcScore(
     ? (base / metrics.views) * bonusFactor
     : 0;
 
-  return (base + bonus) * multiplier;
+  return (base + bonus) * multiplier * mediaMultiplier;
 }
 
 /** @deprecated Stories abolished - kept for compile compat */

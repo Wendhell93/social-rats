@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Post, Creator, EngagementWeights, StoriesWeights,
-  calcScore, calcScoreStories, getMultiplier, PostFormat, detectPlatform
+  Post, Creator, EngagementWeights, StoriesWeights, MediaType,
+  calcScore, calcScoreStories, getMultiplier, detectMediaType, PostFormat, detectPlatform
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,8 @@ import { ContentTypePicker } from "@/components/ContentTypePicker";
 import { FormatBadge } from "@/components/FormatBadge";
 import { scrapePost } from "@/lib/scrape";
 import { useContentTypes } from "@/hooks/use-content-types";
+import { useMediaMultipliers } from "@/hooks/use-media-multipliers";
+import { MediaTypeBadge } from "@/components/MediaTypeBadge";
 import { useAuth } from "@/contexts/AuthContext";
 
 type PostWithCreators = Post & { post_creators: { id: string; creator: Creator }[] };
@@ -37,6 +39,7 @@ export default function EditPost() {
   const [selectedCreators, setSelectedCreators] = useState<Creator[]>([]);
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
   const { types: contentTypes, multipliersMap } = useContentTypes();
+  const { getMediaMultiplier } = useMediaMultipliers();
   const [storiesWeights, setStoriesWeights] = useState<StoriesWeights | null>(null);
   const [postFormat, setPostFormat] = useState<PostFormat>("feed");
   const [metrics, setMetrics] = useState({ likes: 0, comments: 0, shares: 0, saves: 0, views: 0 });
@@ -46,6 +49,7 @@ export default function EditPost() {
   const [creatorSearch, setCreatorSearch] = useState("");
   const [openDate, setOpenDate] = useState(false);
   const [contentType, setContentType] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<MediaType>("static");
   const [scraping, setScraping] = useState(false);
   const [scrapeStatus, setScrapeStatus] = useState<"idle" | "success" | "manual">("idle");
 
@@ -101,6 +105,7 @@ export default function EditPost() {
         setPostedAt(postData.posted_at ? new Date(postData.posted_at) : undefined);
         setSelectedCreators(postData.post_creators?.map((pc: any) => pc.creator).filter(Boolean) || []);
         setContentType(postData.content_type ?? null);
+        setMediaType((postData.media_type as MediaType) || detectMediaType(postData.url, detectPlatform(postData.url)));
       }
       if (c) setAllCreators(c);
       if (w) setWeights(w);
@@ -125,11 +130,13 @@ export default function EditPost() {
       score = calcScoreStories(storiesMetrics, storiesWeights ?? undefined);
     } else {
       const mult = getMultiplier(contentType, multipliersMap);
-      score = weights ? calcScore(metrics, weights, mult) : post.score;
+      const mediaMult = getMediaMultiplier(mediaType);
+      score = weights ? calcScore(metrics, weights, mult, mediaMult) : post.score;
     }
 
     const { error } = await supabase.from("posts").update({
       format: postFormat,
+      media_type: mediaType,
       ...(postFormat === "feed"
         ? { ...metrics, views_pico: 0, interactions: 0, forwards: 0, cta_clicks: 0 }
         : { likes: 0, comments: 0, shares: 0, saves: 0, views: 0, ...storiesMetrics }
@@ -151,9 +158,10 @@ export default function EditPost() {
   }
 
   const mult = getMultiplier(contentType, multipliersMap);
+  const mediaMult = getMediaMultiplier(mediaType);
   const previewScore = postFormat === "stories"
     ? calcScoreStories(storiesMetrics, storiesWeights ?? undefined)
-    : (weights ? calcScore(metrics, weights, mult) : 0);
+    : (weights ? calcScore(metrics, weights, mult, mediaMult) : 0);
 
   const filteredCreators = allCreators.filter(c =>
     c.name.toLowerCase().includes(creatorSearch.toLowerCase()) &&
@@ -265,6 +273,33 @@ export default function EditPost() {
           </CardContent>
         </Card>
 
+        {/* Tipo de Mídia */}
+        {postFormat === "feed" && (
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3"><CardTitle className="text-base">Tipo de Mídia</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                {(["static", "video"] as MediaType[]).map(mt => (
+                  <button
+                    key={mt}
+                    type="button"
+                    onClick={() => setMediaType(mt)}
+                    className={cn(
+                      "flex flex-col items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-sm transition-all",
+                      mediaType === mt
+                        ? "border-primary bg-primary/10 text-primary font-semibold"
+                        : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                    )}
+                  >
+                    <span className="text-lg leading-none">{mt === "video" ? "🎬" : "📷"}</span>
+                    <span className="text-xs font-medium">{mt === "video" ? "Video" : "Estatico"}</span>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Tipo de Conteúdo (Feed only) */}
         {postFormat === "feed" && (
           <Card className="bg-card border-border">
@@ -356,6 +391,11 @@ export default function EditPost() {
                 {postFormat === "feed" && contentType && mult !== 1.0 && (
                   <span className="ml-2 text-xs text-muted-foreground">
                     (×{mult} {contentTypes.find(t => t.key === contentType)?.label || contentType})
+                  </span>
+                )}
+                {postFormat === "feed" && mediaMult !== 1.0 && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    (×{mediaMult} {mediaType === "video" ? "Video" : "Estatico"})
                   </span>
                 )}
               </div>

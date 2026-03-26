@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useContentTypes, ContentTypeConfig } from "@/hooks/use-content-types";
+import { useMediaMultipliers, MediaTypeMultipliers } from "@/hooks/use-media-multipliers";
 import {
   Heart, MessageCircle, Share2, Bookmark, Save, Info, Layers, Loader2,
-  Eye, Repeat2, MousePointerClick, BookImage, UserPlus, Trash2, ShieldCheck, Mail, Building2, Plus, Pencil
+  Eye, Repeat2, MousePointerClick, BookImage, UserPlus, Trash2, ShieldCheck, Mail, Building2, Plus, Pencil,
+  Image, Video
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -35,6 +37,8 @@ export default function Settings() {
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
   const [form, setForm] = useState({ likes_weight: 1, comments_weight: 3, shares_weight: 5, saves_weight: 2, views_weight: 0, use_engagement_rate: true, no_views_factor: 0.02, engagement_bonus_factor: 100 });
   const { types: contentTypes, reload: reloadTypes, multipliersMap } = useContentTypes();
+  const { data: mediaMultData, reload: reloadMediaMult, getMediaMultiplier } = useMediaMultipliers();
+  const [mediaMultForm, setMediaMultForm] = useState({ static_multiplier: 1, video_multiplier: 1 });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -70,6 +74,9 @@ export default function Settings() {
       }
       if (ae) setAdminEmails(ae as AdminEmail[]);
       if (ar) setAreas(ar);
+      // Load media multipliers
+      const { data: mm } = await supabase.from("media_type_multipliers").select("*").limit(1).single();
+      if (mm) setMediaMultForm({ static_multiplier: (mm as any).static_multiplier ?? 1, video_multiplier: (mm as any).video_multiplier ?? 1 });
       setLoading(false);
     }
     load();
@@ -86,6 +93,15 @@ export default function Settings() {
       return;
     }
 
+    // Save media type multipliers
+    if (mediaMultData) {
+      await supabase.from("media_type_multipliers").update({
+        static_multiplier: mediaMultForm.static_multiplier,
+        video_multiplier: mediaMultForm.video_multiplier,
+        updated_at: new Date().toISOString(),
+      }).eq("id", mediaMultData.id);
+    }
+
     toast({ title: "Configurações salvas!" });
 
     // Recalculate all post scores
@@ -93,10 +109,13 @@ export default function Settings() {
     if (posts) {
       const updates = posts.map((p) => {
         const mult = getMultiplier(p.content_type ?? null, multipliersMap);
+        const mt = (p as any).media_type || "static";
+        const mediaMult = mt === "video" ? mediaMultForm.video_multiplier : mediaMultForm.static_multiplier;
         const score = calcScore(
           { likes: p.likes, comments: p.comments, shares: p.shares, saves: p.saves, views: p.views ?? 0 },
           { ...weights, ...form } as EngagementWeights,
-          mult
+          mult,
+          mediaMult
         );
         return { id: p.id, score };
       });
@@ -357,6 +376,58 @@ export default function Settings() {
             </CardContent>
           </Card>
 
+          {/* Multiplicadores por Tipo de Mídia */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Video className="w-4 h-4 text-primary" />
+                Multiplicadores por Tipo de Midia
+              </CardTitle>
+              <CardDescription>
+                O score final e multiplicado pelo fator do tipo de midia (estatico ou video).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                  <Image className="w-5 h-5 text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <Label className="text-sm font-medium">Estatico</Label>
+                  <p className="text-xs text-muted-foreground">Fotos, carrosseis e imagens</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number" min={0} step={0.1} className="w-20 text-center"
+                    value={mediaMultForm.static_multiplier}
+                    onChange={(e) => setMediaMultForm(f => ({ ...f, static_multiplier: parseFloat(e.target.value) || 0 }))}
+                  />
+                  <span className="text-xs text-muted-foreground">x</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                  <Video className="w-5 h-5 text-purple-400" />
+                </div>
+                <div className="flex-1">
+                  <Label className="text-sm font-medium">Video</Label>
+                  <p className="text-xs text-muted-foreground">Reels, TikToks, YouTube e videos</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number" min={0} step={0.1} className="w-20 text-center"
+                    value={mediaMultForm.video_multiplier}
+                    onChange={(e) => setMediaMultForm(f => ({ ...f, video_multiplier: parseFloat(e.target.value) || 0 }))}
+                  />
+                  <span className="text-xs text-muted-foreground">x</span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground pt-1">
+                O tipo de midia e detectado automaticamente pela URL do post. 1.0 = neutro.
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Fórmulas */}
           <Card className="bg-accent border-primary/20">
             <CardContent className="p-4 space-y-3">
@@ -374,7 +445,7 @@ export default function Settings() {
                       Bônus (vídeo) = (base ÷ views) × {form.engagement_bonus_factor}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      <strong>Score = (base + bônus) × multiplicador de tipo</strong>
+                      <strong>Score = (base + bônus) × mult. tipo × mult. mídia</strong>
                     </p>
                   </div>
                   <div className="border-t border-border pt-3">

@@ -6,6 +6,7 @@ import { Post, Creator } from "@/lib/types";
 import { PlatformBadge } from "@/components/PlatformBadge";
 import { ContentTypeBadge } from "@/components/ContentTypeBadge";
 import { FormatBadge } from "@/components/FormatBadge";
+import { MediaTypeBadge } from "@/components/MediaTypeBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -144,6 +145,7 @@ export default function Posts() {
                     <div className="flex items-center gap-2 flex-wrap mb-1.5">
                       <PlatformBadge platform={post.platform} />
                       <FormatBadge format={post.format || "feed"} />
+                      {!isStories && <MediaTypeBadge mediaType={(post as any).media_type || "static"} />}
                       {!isStories && <ContentTypeBadge contentType={(post as any).content_type ?? null} />}
                       {post.post_creators?.map(pc => pc.creator && (
                         <Link key={pc.creator.id} to={`/creators/${pc.creator.id}`} className="text-xs text-muted-foreground hover:text-primary transition-colors">

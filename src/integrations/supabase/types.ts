@@ -248,6 +248,27 @@ export type Database = {
           },
         ]
       }
+      media_type_multipliers: {
+        Row: {
+          id: string
+          static_multiplier: number
+          video_multiplier: number
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          static_multiplier?: number
+          video_multiplier?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          static_multiplier?: number
+          video_multiplier?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           comments: number
@@ -259,6 +280,7 @@ export type Database = {
           id: string
           interactions: number
           likes: number
+          media_type: string
           member_id: string | null
           platform: string
           posted_at: string | null
@@ -280,6 +302,7 @@ export type Database = {
           id?: string
           interactions?: number
           likes?: number
+          media_type?: string
           member_id?: string | null
           platform: string
           posted_at?: string | null
@@ -301,6 +324,7 @@ export type Database = {
           id?: string
           interactions?: number
           likes?: number
+          media_type?: string
           member_id?: string | null
           platform?: string
           posted_at?: string | null

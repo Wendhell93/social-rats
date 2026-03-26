@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  detectPlatform, calcScore, getMultiplier,
-  EngagementWeights, Creator
+  detectPlatform, detectMediaType, calcScore, getMultiplier,
+  EngagementWeights, Creator, MediaType
 } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,8 @@ import { ContentTypePicker } from "@/components/ContentTypePicker";
 import { scrapePost } from "@/lib/scrape";
 import { useAuth } from "@/contexts/AuthContext";
 import { useContentTypes } from "@/hooks/use-content-types";
+import { useMediaMultipliers } from "@/hooks/use-media-multipliers";
+import { MediaTypeBadge } from "@/components/MediaTypeBadge";
 
 export default function NewPost() {
   const navigate = useNavigate();
@@ -36,24 +38,29 @@ export default function NewPost() {
   const [creators, setCreators] = useState<Creator[]>([]);
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
   const { types: contentTypes, multipliersMap } = useContentTypes();
+  const { getMediaMultiplier } = useMediaMultipliers();
   const [saving, setSaving] = useState(false);
   // Feed metrics
   const [metrics, setMetrics] = useState({ likes: 0, comments: 0, shares: 0, saves: 0, views: 0 });
   const [postedAt, setPostedAt] = useState<Date | undefined>(undefined);
   const [creatorSearch, setCreatorSearch] = useState("");
   const [contentType, setContentType] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<MediaType>("static");
   const [scraping, setScraping] = useState(false);
   const [scrapeStatus, setScrapeStatus] = useState<"idle" | "success" | "manual">("idle");
   const [duplicateInfo, setDuplicateInfo] = useState<{ creator: string; date: string } | null>(null);
 
   const platform = detectPlatform(url);
   const showForm = !!platform;
+  const detectedMediaType = detectMediaType(url, platform);
 
-  // Reset scrape status and check duplicate when URL changes
+  // Reset scrape status, detect media type, and check duplicate when URL changes
   useEffect(() => {
     setScrapeStatus("idle");
     setDuplicateInfo(null);
-    if (!url.trim() || !detectPlatform(url)) return;
+    const p = detectPlatform(url);
+    setMediaType(detectMediaType(url, p));
+    if (!url.trim() || !p) return;
     const normalized = url.trim().split("?")[0].replace(/\/$/, "");
     const timeout = setTimeout(async () => {
       const { data } = await supabase
@@ -162,7 +169,8 @@ export default function NewPost() {
 
     setSaving(true);
     const mult = getMultiplier(contentType, multipliersMap);
-    const score = weights ? calcScore(metrics, weights, mult) : 0;
+    const mediaMult = getMediaMultiplier(mediaType);
+    const score = weights ? calcScore(metrics, weights, mult, mediaMult) : 0;
 
     const { data: post, error } = await supabase.from("posts").insert({
       member_id: selectedCreators[0].id,
@@ -171,6 +179,7 @@ export default function NewPost() {
       title: title.trim() || null,
       thumbnail_url: null,
       format: "feed",
+      media_type: mediaType,
       ...metrics,
       views_pico: 0, interactions: 0, forwards: 0, cta_clicks: 0,
       score,
@@ -198,7 +207,8 @@ export default function NewPost() {
   }
 
   const mult = getMultiplier(contentType, multipliersMap);
-  const previewScore = weights ? calcScore(metrics, weights, mult) : 0;
+  const mediaMult = getMediaMultiplier(mediaType);
+  const previewScore = weights ? calcScore(metrics, weights, mult, mediaMult) : 0;
 
   const filteredCreators = creators.filter(c =>
     c.name.toLowerCase().includes(creatorSearch.toLowerCase()) &&
@@ -229,6 +239,7 @@ export default function NewPost() {
             {platform && (
               <div className="flex items-center gap-2 flex-wrap">
                 <PlatformBadge platform={platform} />
+                <MediaTypeBadge mediaType={detectedMediaType} />
                 {isAdmin && (platform === "instagram" || platform === "tiktok" || platform === "youtube") && (
                   <Button
                     type="button"
@@ -277,6 +288,41 @@ export default function NewPost() {
               <CardHeader className="pb-3"><CardTitle className="text-base">Título do Post</CardTitle></CardHeader>
               <CardContent>
                 <Input placeholder="Título ou descrição resumida (opcional)" value={title} onChange={e => setTitle(e.target.value)} className="bg-input border-border" />
+              </CardContent>
+            </Card>
+
+            {/* Tipo de Mídia */}
+            <Card className="bg-card border-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Tipo de Mídia</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3">
+                  {(["static", "video"] as MediaType[]).map(mt => (
+                    <button
+                      key={mt}
+                      type="button"
+                      onClick={() => setMediaType(mt)}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-sm transition-all",
+                        mediaType === mt
+                          ? "border-primary bg-primary/10 text-primary font-semibold"
+                          : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                      )}
+                    >
+                      <span className="text-lg leading-none">{mt === "video" ? "🎬" : "📷"}</span>
+                      <span className="text-xs font-medium">{mt === "video" ? "Video" : "Estatico"}</span>
+                      {mediaMult !== 1.0 && mediaType === mt && (
+                        <span className="text-xs text-primary/70">{mediaMult}x</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {detectedMediaType !== mediaType && (
+                  <p className="text-xs text-amber-400 mt-2">
+                    Detectado automaticamente como "{detectedMediaType === "video" ? "Video" : "Estatico"}" — você alterou manualmente.
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -388,6 +434,11 @@ export default function NewPost() {
                     {contentType && mult !== 1.0 && (
                       <span className="ml-2 text-xs text-muted-foreground">
                         (×{mult} {contentTypes.find(t => t.key === contentType)?.label || contentType})
+                      </span>
+                    )}
+                    {mediaMult !== 1.0 && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        (×{mediaMult} {mediaType === "video" ? "Video" : "Estatico"})
                       </span>
                     )}
                   </div>
