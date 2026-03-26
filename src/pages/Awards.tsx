@@ -811,7 +811,7 @@ export default function Awards() {
           )}
         </button>
 
-        {showRules && (
+        {showRules && (<>
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
             {/* Feed Weights */}
             <Card className="border-border/60 bg-card/50">
@@ -911,7 +911,7 @@ export default function Awards() {
 
           {/* ── Score Simulator ─────────────────────────────────────────── */}
           <ScoreSimulator weights={weights} contentTypes={contentTypes} mediaMult={mediaMult} />
-        )}
+        </>)}
       </div>
 
       {loading ? (
