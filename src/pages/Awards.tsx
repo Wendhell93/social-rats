@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Member } from "@/lib/types";
@@ -35,6 +35,7 @@ import {
   ChevronDown,
   ChevronUp,
   Scroll,
+  Calculator,
 } from "lucide-react";
 import { EngagementWeights, Area } from "@/lib/types";
 import { useContentTypes } from "@/hooks/use-content-types";
@@ -470,6 +471,163 @@ function AwardFormDialog({
   );
 }
 
+// ─── Score Simulator ─────────────────────────────────────────────────────────
+
+function ScoreSimulator({
+  weights,
+  contentTypes,
+  mediaMult,
+}: {
+  weights: EngagementWeights | null;
+  contentTypes: { id: string; key: string; label: string; emoji: string; multiplier: number }[];
+  mediaMult: { static_multiplier: number; video_multiplier: number } | null;
+}) {
+  const [likes, setLikes] = useState(0);
+  const [comments, setComments] = useState(0);
+  const [views, setViews] = useState(0);
+  const [selectedCT, setSelectedCT] = useState<string | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<"static" | "video">("static");
+
+  const ctMult = useMemo(() => {
+    if (!selectedCT) return 1;
+    const found = contentTypes.find((ct) => ct.key === selectedCT);
+    return found?.multiplier ?? 1;
+  }, [selectedCT, contentTypes]);
+
+  const mediaMltVal = selectedMedia === "video"
+    ? (mediaMult?.video_multiplier ?? 1)
+    : (mediaMult?.static_multiplier ?? 1);
+
+  const base = useMemo(() => {
+    if (!weights) return 0;
+    return likes * weights.likes_weight + comments * weights.comments_weight;
+  }, [likes, comments, weights]);
+
+  const bonusFactor = weights?.engagement_bonus_factor ?? 100;
+  const bonus = views > 0 ? (base / views) * bonusFactor : 0;
+  const score = (base + bonus) * ctMult * mediaMltVal;
+
+  return (
+    <Card className="mt-4 border-primary/20 bg-card/50 animate-in fade-in slide-in-from-top-2 duration-200">
+      <CardHeader className="pb-3 pt-4 px-4">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <Calculator className="w-4 h-4 text-primary" />
+          Simulador de Pontuação
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4 space-y-4">
+        {/* Metric inputs */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">❤️ Curtidas</Label>
+            <Input
+              type="number" min={0} className="h-9 text-center tabular-nums"
+              value={likes || ""}
+              onChange={(e) => setLikes(parseInt(e.target.value) || 0)}
+              placeholder="0"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">💬 Comentários</Label>
+            <Input
+              type="number" min={0} className="h-9 text-center tabular-nums"
+              value={comments || ""}
+              onChange={(e) => setComments(parseInt(e.target.value) || 0)}
+              placeholder="0"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">👁️ Views</Label>
+            <Input
+              type="number" min={0} className="h-9 text-center tabular-nums"
+              value={views || ""}
+              onChange={(e) => setViews(parseInt(e.target.value) || 0)}
+              placeholder="0"
+            />
+          </div>
+        </div>
+
+        {/* Type selectors */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Content type */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Tipo de conteúdo</Label>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setSelectedCT(null)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                  selectedCT === null
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-accent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Nenhum (1×)
+              </button>
+              {contentTypes.map((ct) => (
+                <button
+                  key={ct.key}
+                  onClick={() => setSelectedCT(ct.key)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                    selectedCT === ct.key
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-accent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {ct.emoji} {ct.label} ({ct.multiplier}×)
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Media type */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Tipo de mídia</Label>
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => setSelectedMedia("static")}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                  selectedMedia === "static"
+                    ? "bg-blue-500 text-white"
+                    : "bg-accent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                🖼️ Estático ({mediaMult?.static_multiplier ?? 1}×)
+              </button>
+              <button
+                onClick={() => setSelectedMedia("video")}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                  selectedMedia === "video"
+                    ? "bg-purple-500 text-white"
+                    : "bg-accent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                🎥 Vídeo ({mediaMult?.video_multiplier ?? 1}×)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Result */}
+        <div className="pt-3 border-t border-border/40">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">
+                Base: <span className="font-mono">{base.toFixed(0)}</span>
+                {bonus > 0 && <> + Bônus: <span className="font-mono">{bonus.toFixed(0)}</span></>}
+                {" "}× <span className="font-mono">{ctMult}</span> × <span className="font-mono">{mediaMltVal}</span>
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-primary tabular-nums">{score.toFixed(0)}</p>
+              <p className="text-[10px] text-muted-foreground">pontos</p>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Awards() {
@@ -750,6 +908,9 @@ export default function Awards() {
               </CardContent>
             </Card>
           </div>
+
+          {/* ── Score Simulator ─────────────────────────────────────────── */}
+          <ScoreSimulator weights={weights} contentTypes={contentTypes} mediaMult={mediaMult} />
         )}
       </div>
 
