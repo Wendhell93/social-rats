@@ -657,15 +657,16 @@ export default function Awards() {
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
   const { types: contentTypes } = useContentTypes();
   const { data: mediaMult } = useMediaMultipliers();
-  const [activeAward, setActiveAward] = useState<Award | null>(null);
-  const [activePrizes, setActivePrizes] = useState<AwardPrize[]>([]);
+  const [activeAwards, setActiveAwards] = useState<Award[]>([]);
+  const [prizesMap, setPrizesMap] = useState<Record<string, AwardPrize[]>>({});
   const [pastAwards, setPastAwards] = useState<Award[]>([]);
-  const [pastPrizesMap, setPastPrizesMap] = useState<Record<string, AwardPrize[]>>({});
   const [members, setMembers] = useState<Member[]>([]);
   const [postCreators, setPostCreators] = useState<PostCreatorRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingAward, setEditingAward] = useState<Award | null>(null);
   const [closingId, setClosingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [awardAreasMap, setAwardAreasMap] = useState<Record<string, Area[]>>({});
 
   async function load() {
@@ -685,19 +686,16 @@ export default function Awards() {
     ]);
 
     if (awards) {
-      const active = awards.find((a) => a.is_active) ?? null;
-      const past = awards.filter((a) => !a.is_active);
-      setActiveAward(active);
-      setPastAwards(past);
+      setActiveAwards(awards.filter((a) => a.is_active));
+      setPastAwards(awards.filter((a) => !a.is_active));
 
       if (allPrizes) {
         const typedPrizes = allPrizes as unknown as AwardPrize[];
-        setActivePrizes(active ? typedPrizes.filter((p) => p.award_id === active.id) : []);
         const map: Record<string, AwardPrize[]> = {};
-        past.forEach((a) => {
+        awards.forEach((a) => {
           map[a.id] = typedPrizes.filter((p) => p.award_id === a.id);
         });
-        setPastPrizesMap(map);
+        setPrizesMap(map);
       }
     }
 
@@ -769,21 +767,19 @@ export default function Awards() {
       .sort((a, b) => b.totalScore - a.totalScore);
   }
 
-  async function handleCloseCompetition() {
-    if (!activeAward) return;
-    setClosingId(activeAward.id);
+  async function handleCloseCompetition(award: Award) {
+    setClosingId(award.id);
     try {
-      const ranking = computeLiveRanking(activeAward);
-      // Save winners into prizes
-      for (const prize of activePrizes) {
+      const ranking = computeLiveRanking(award);
+      const awardPrizes = prizesMap[award.id] ?? [];
+      for (const prize of awardPrizes) {
         const winner = ranking[prize.placement - 1];
         await supabase
           .from("award_prizes")
           .update({ winner_member_id: winner?.member.id ?? null })
           .eq("id", prize.id);
       }
-      // Deactivate award
-      await supabase.from("awards").update({ is_active: false }).eq("id", activeAward.id);
+      await supabase.from("awards").update({ is_active: false }).eq("id", award.id);
       toast({ title: "Competição encerrada! Vencedores registrados." });
       load();
     } catch {
@@ -793,7 +789,20 @@ export default function Awards() {
     }
   }
 
-  const liveRanking = activeAward ? computeLiveRanking(activeAward) : [];
+  async function handleDeleteAward(awardId: string) {
+    setDeletingId(awardId);
+    try {
+      await supabase.from("award_prizes").delete().eq("award_id", awardId);
+      await supabase.from("award_areas").delete().eq("award_id", awardId);
+      await supabase.from("awards").delete().eq("id", awardId);
+      toast({ title: "Desafio removido." });
+      load();
+    } catch {
+      toast({ title: "Erro ao remover desafio", variant: "destructive" });
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
@@ -809,7 +818,7 @@ export default function Awards() {
           </p>
         </div>
         {isAdmin && (
-          <Button onClick={() => setDialogOpen(true)} disabled={!!activeAward && activeAward.is_active && !dialogOpen} className="flex-shrink-0">
+          <Button onClick={() => { setEditingAward(null); setDialogOpen(true); }} className="flex-shrink-0">
             <Plus className="w-4 h-4 mr-1 md:mr-2" />
             <span className="hidden sm:inline">Novo desafio</span><span className="sm:hidden">Novo</span>
           </Button>
@@ -938,168 +947,174 @@ export default function Awards() {
         <p className="text-muted-foreground text-sm">Carregando…</p>
       ) : (
         <>
-          {/* ── Active Challenge ─────────────────────────────────────────── */}
-          {activeAward ? (
-            <section className="mb-10">
-              <Card className="border-primary/30 bg-primary/5 overflow-hidden">
-                {/* Progress bar */}
-                {(() => {
-                  const now = new Date();
-                  const start = activeAward.start_date ? new Date(activeAward.start_date) : null;
-                  const end = activeAward.end_date ? new Date(activeAward.end_date + "T23:59:59") : null;
-                  const progress = start && end
-                    ? Math.min(100, Math.max(0, ((now.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100))
-                    : null;
-                  const daysLeft = end
-                    ? Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
-                    : null;
-                  return progress !== null ? (
-                    <div>
-                      <div className="h-3 w-full bg-primary/10">
-                        <div
-                          className="h-full transition-all duration-700"
-                          style={{
-                            width: `${progress}%`,
-                            background: "linear-gradient(90deg, hsl(217 91% 55%), hsl(199 95% 60%))",
-                            boxShadow: "0 0 14px hsl(217 91% 60% / 0.9), 0 0 4px hsl(199 95% 65% / 0.6)",
-                          }}
-                        />
-                      </div>
-                      {daysLeft !== null && (
-                        <div className="px-6 pt-2.5 pb-0">
-                          <span className="text-sm font-bold tracking-wide" style={{ color: "hsl(217 91% 70%)", textShadow: "0 0 8px hsl(217 91% 60% / 0.5)" }}>
-                            {daysLeft === 0 ? "Último dia! 🔥" : `Faltam ${daysLeft} dia${daysLeft !== 1 ? "s" : ""}`}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ) : null;
-                })()}
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Badge className="bg-primary/20 text-primary border-primary/30 text-xs font-semibold">
-                          🏆 Desafio Ativo
-                        </Badge>
-                        {activeAward.start_date && (
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(activeAward.start_date)}
-                            {activeAward.end_date && ` – ${formatDate(activeAward.end_date)}`}
-                          </span>
-                        )}
-                      </div>
-                      <CardTitle className="text-xl">{activeAward.title}</CardTitle>
-                      {activeAward.description && (
-                        <p className="text-sm text-muted-foreground">{activeAward.description}</p>
-                      )}
-                      {(awardAreasMap[activeAward.id] || []).length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-1">
-                          {awardAreasMap[activeAward.id].map(a => (
-                            <span key={a.id} className="px-2 py-0.5 rounded-md bg-primary/15 border border-primary/20 text-xs text-primary">
-                              {a.name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    {isAdmin && (
-                      <div className="flex gap-2 flex-shrink-0">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setDialogOpen(true)}
-                        >
-                          <Pencil className="w-3.5 h-3.5 mr-1.5" />
-                          Editar
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          disabled={closingId === activeAward.id}
-                          onClick={handleCloseCompetition}
-                        >
-                          <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
-                          {closingId ? "Encerrando…" : "Encerrar"}
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-6">
-                  {/* Prize cards */}
-                  {activePrizes.length > 0 && (
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-3">
-                        Prêmios
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {activePrizes.map((prize) => (
-                          <PrizeCard
-                            key={prize.id}
-                            prize={prize}
-                            winner={liveRanking[prize.placement - 1] ?? null}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Live ranking */}
-                  {liveRanking.length > 0 && (
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-3">
-                        Quem levaria agora
-                      </p>
-                      <div className="space-y-2">
-                        {liveRanking
-                          .slice(0, Math.max(activePrizes.length, 3))
-                          .map((entry, i) => (
-                            <div
-                              key={entry.member.id}
-                              className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-background/60 border border-border/40"
-                            >
-                              <span className="w-7 text-center text-base">
-                                {i < 3 ? medals[i] : `#${i + 1}`}
-                              </span>
-                              <Avatar className="w-8 h-8">
-                                <AvatarImage src={entry.member.avatar_url || undefined} />
-                                <AvatarFallback className="text-xs">
-                                  {entry.member.name.slice(0, 2).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{entry.member.name}</p>
-                                {entry.member.role && (
-                                  <p className="text-xs text-muted-foreground">{entry.member.role}</p>
-                                )}
-                              </div>
-                              <p className={`text-lg font-bold ${medalColors[i] ?? "text-primary"}`}>
-                                {entry.totalScore.toFixed(0)}
-                                <span className="text-xs font-normal text-muted-foreground ml-1">pts</span>
-                              </p>
+          {/* ── Active Challenges ────────────────────────────────────────── */}
+          {activeAwards.length > 0 ? (
+            <div className="space-y-6 mb-10">
+              {activeAwards.map((award) => {
+                const awardPrizes = prizesMap[award.id] ?? [];
+                const liveRanking = computeLiveRanking(award);
+                return (
+                  <section key={award.id}>
+                    <Card className="border-primary/30 bg-primary/5 overflow-hidden">
+                      {/* Progress bar */}
+                      {(() => {
+                        const now = new Date();
+                        const start = award.start_date ? new Date(award.start_date) : null;
+                        const end = award.end_date ? new Date(award.end_date + "T23:59:59") : null;
+                        const progress = start && end
+                          ? Math.min(100, Math.max(0, ((now.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100))
+                          : null;
+                        const daysLeft = end
+                          ? Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+                          : null;
+                        return progress !== null ? (
+                          <div>
+                            <div className="h-3 w-full bg-primary/10">
+                              <div
+                                className="h-full transition-all duration-700"
+                                style={{
+                                  width: `${progress}%`,
+                                  background: "linear-gradient(90deg, hsl(217 91% 55%), hsl(199 95% 60%))",
+                                  boxShadow: "0 0 14px hsl(217 91% 60% / 0.9), 0 0 4px hsl(199 95% 65% / 0.6)",
+                                }}
+                              />
                             </div>
-                          ))}
-                      </div>
-                    </div>
-                  )}
+                            {daysLeft !== null && (
+                              <div className="px-6 pt-2.5 pb-0">
+                                <span className="text-sm font-bold tracking-wide" style={{ color: "hsl(217 91% 70%)", textShadow: "0 0 8px hsl(217 91% 60% / 0.5)" }}>
+                                  {daysLeft === 0 ? "Último dia! 🔥" : `Faltam ${daysLeft} dia${daysLeft !== 1 ? "s" : ""}`}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ) : null;
+                      })()}
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-primary/20 text-primary border-primary/30 text-xs font-semibold">
+                                🏆 Desafio Ativo
+                              </Badge>
+                              {award.start_date && (
+                                <span className="text-xs text-muted-foreground">
+                                  {formatDate(award.start_date)}
+                                  {award.end_date && ` – ${formatDate(award.end_date)}`}
+                                </span>
+                              )}
+                            </div>
+                            <CardTitle className="text-xl">{award.title}</CardTitle>
+                            {award.description && (
+                              <p className="text-sm text-muted-foreground">{award.description}</p>
+                            )}
+                            {(awardAreasMap[award.id] || []).length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {awardAreasMap[award.id].map(a => (
+                                  <span key={a.id} className="px-2 py-0.5 rounded-md bg-primary/15 border border-primary/20 text-xs text-primary">
+                                    {a.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          {isAdmin && (
+                            <div className="flex gap-2 flex-shrink-0">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => { setEditingAward(award); setDialogOpen(true); }}
+                              >
+                                <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                                Editar
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={closingId === award.id}
+                                onClick={() => handleCloseCompetition(award)}
+                              >
+                                <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                                {closingId === award.id ? "Encerrando…" : "Encerrar"}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </CardHeader>
 
-                  {liveRanking.length === 0 && activePrizes.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      Configure os prêmios e aguarde publicações no período do desafio.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </section>
+                      <CardContent className="space-y-6">
+                        {awardPrizes.length > 0 && (
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-3">
+                              Prêmios
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {awardPrizes.map((prize) => (
+                                <PrizeCard
+                                  key={prize.id}
+                                  prize={prize}
+                                  winner={liveRanking[prize.placement - 1] ?? null}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {liveRanking.length > 0 && (
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-3">
+                              Quem levaria agora
+                            </p>
+                            <div className="space-y-2">
+                              {liveRanking
+                                .slice(0, Math.max(awardPrizes.length, 3))
+                                .map((entry, i) => (
+                                  <div
+                                    key={entry.member.id}
+                                    className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-background/60 border border-border/40"
+                                  >
+                                    <span className="w-7 text-center text-base">
+                                      {i < 3 ? medals[i] : `#${i + 1}`}
+                                    </span>
+                                    <Avatar className="w-8 h-8">
+                                      <AvatarImage src={entry.member.avatar_url || undefined} />
+                                      <AvatarFallback className="text-xs">
+                                        {entry.member.name.slice(0, 2).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium truncate">{entry.member.name}</p>
+                                      {entry.member.role && (
+                                        <p className="text-xs text-muted-foreground">{entry.member.role}</p>
+                                      )}
+                                    </div>
+                                    <p className={`text-lg font-bold ${medalColors[i] ?? "text-primary"}`}>
+                                      {entry.totalScore.toFixed(0)}
+                                      <span className="text-xs font-normal text-muted-foreground ml-1">pts</span>
+                                    </p>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {liveRanking.length === 0 && awardPrizes.length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            Configure os prêmios e aguarde publicações no período do desafio.
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </section>
+                );
+              })}
+            </div>
           ) : (
             <Card className="mb-10 border-dashed">
               <CardContent className="flex flex-col items-center py-12 gap-3">
                 <Trophy className="w-10 h-10 text-muted-foreground/40" />
                 <p className="text-muted-foreground text-sm">Nenhum desafio ativo no momento.</p>
                 {isAdmin && (
-                  <Button variant="outline" onClick={() => setDialogOpen(true)}>
+                  <Button variant="outline" onClick={() => { setEditingAward(null); setDialogOpen(true); }}>
                     <Plus className="w-4 h-4 mr-2" /> Criar desafio
                   </Button>
                 )}
@@ -1116,7 +1131,7 @@ export default function Awards() {
               </h2>
               <Accordion type="multiple" className="space-y-2">
                 {pastAwards.map((award) => {
-                  const prizes = pastPrizesMap[award.id] ?? [];
+                  const prizes = prizesMap[award.id] ?? [];
                   return (
                     <AccordionItem
                       key={award.id}
@@ -1124,7 +1139,7 @@ export default function Awards() {
                       className="border border-border/60 rounded-lg px-4 data-[state=open]:bg-muted/30"
                     >
                       <AccordionTrigger className="hover:no-underline py-3">
-                        <div className="flex items-center gap-3 text-left">
+                        <div className="flex items-center gap-3 text-left flex-1">
                           <span className="font-medium text-sm">{award.title}</span>
                           {award.start_date && (
                             <span className="text-xs text-muted-foreground">
@@ -1161,6 +1176,20 @@ export default function Awards() {
                             Nenhum prêmio registrado.
                           </p>
                         )}
+                        {isAdmin && (
+                          <div className="flex justify-end pt-3 border-t border-border/40 mt-3">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1.5"
+                              disabled={deletingId === award.id}
+                              onClick={() => handleDeleteAward(award.id)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              {deletingId === award.id ? "Removendo…" : "Remover desafio"}
+                            </Button>
+                          </div>
+                        )}
                       </AccordionContent>
                     </AccordionItem>
                   );
@@ -1174,10 +1203,10 @@ export default function Awards() {
       {/* Form Dialog */}
       <AwardFormDialog
         open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        award={activeAward}
-        prizes={activeAward ? activePrizes : []}
-        initialAreas={activeAward ? (awardAreasMap[activeAward.id] || []) : []}
+        onClose={() => { setDialogOpen(false); setEditingAward(null); }}
+        award={editingAward}
+        prizes={editingAward ? (prizesMap[editingAward.id] ?? []) : []}
+        initialAreas={editingAward ? (awardAreasMap[editingAward.id] || []) : []}
         onSaved={load}
       />
     </div>
