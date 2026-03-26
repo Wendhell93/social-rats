@@ -36,7 +36,9 @@ import {
   ChevronUp,
   Scroll,
 } from "lucide-react";
-import { EngagementWeights, StoriesWeights, ContentTypeMultipliers, Area } from "@/lib/types";
+import { EngagementWeights, Area } from "@/lib/types";
+import { useContentTypes } from "@/hooks/use-content-types";
+import { useMediaMultipliers } from "@/hooks/use-media-multipliers";
 import { parseISO, isWithinInterval, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { AreaPicker } from "@/components/AreaPicker";
@@ -475,8 +477,8 @@ export default function Awards() {
   const { isAdmin } = useAuth();
   const [showRules, setShowRules] = useState(false);
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
-  const [storiesW, setStoriesW] = useState<StoriesWeights | null>(null);
-  const [multipliers, setMultipliers] = useState<ContentTypeMultipliers | null>(null);
+  const { types: contentTypes } = useContentTypes();
+  const { data: mediaMult } = useMediaMultipliers();
   const [activeAward, setActiveAward] = useState<Award | null>(null);
   const [activePrizes, setActivePrizes] = useState<AwardPrize[]>([]);
   const [pastAwards, setPastAwards] = useState<Award[]>([]);
@@ -541,14 +543,8 @@ export default function Awards() {
   useEffect(() => {
     load();
     // Load scoring rules (read-only)
-    Promise.all([
-      supabase.from("engagement_weights").select("*").limit(1).single(),
-      supabase.from("stories_weights").select("*").limit(1).single(),
-      supabase.from("content_type_multipliers").select("*").limit(1).single(),
-    ]).then(([{ data: w }, { data: sw }, { data: ct }]) => {
+    supabase.from("engagement_weights").select("*").limit(1).single().then(({ data: w }) => {
       if (w) setWeights(w as EngagementWeights);
-      if (sw) setStoriesW(sw as StoriesWeights);
-      if (ct) setMultipliers(ct as ContentTypeMultipliers);
     });
   }, []);
 
@@ -659,11 +655,11 @@ export default function Awards() {
 
         {showRules && (
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
-            {/* Feed */}
+            {/* Feed Weights */}
             <Card className="border-border/60 bg-card/50">
               <CardHeader className="pb-3 pt-4 px-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <span className="text-base">📱</span> Feed
+                  <span className="text-base">📱</span> Pesos de Interação
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4 space-y-3">
@@ -687,72 +683,70 @@ export default function Awards() {
                 </div>
                 <div className="pt-2 border-t border-border/40">
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Fórmula: <span className="font-mono">(métricas × peso) × multiplicador</span>
+                    Fórmula: <span className="font-mono">(métricas × peso) × mult. tipo × mult. mídia</span>
                   </p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Stories */}
+            {/* Content Type Multipliers (dynamic from DB) */}
             <Card className="border-border/60 bg-card/50">
               <CardHeader className="pb-3 pt-4 px-4">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <span className="text-base">⭕</span> Stories
+                  <span className="text-base">✖️</span> Tipo de Conteúdo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 space-y-3">
+                <div className="space-y-2">
+                  {contentTypes.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Nenhum tipo cadastrado</p>
+                  ) : (
+                    contentTypes.map((ct) => (
+                      <div key={ct.id} className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1.5">
+                          <span>{ct.emoji || "📝"}</span> {ct.label}
+                        </span>
+                        <span className="font-mono font-semibold text-foreground tabular-nums">
+                          ×{ct.multiplier}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="pt-2 border-t border-border/40">
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Sem tipo = multiplicador <span className="font-mono">1×</span> (neutro)
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Media Type Multipliers (static vs video) */}
+            <Card className="border-border/60 bg-card/50">
+              <CardHeader className="pb-3 pt-4 px-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <span className="text-base">🎬</span> Tipo de Mídia
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4 space-y-3">
                 <div className="space-y-2">
                   {[
-                    { icon: "👁️", label: "Views Pico", val: storiesW?.views_pico_weight },
-                    { icon: "💬", label: "Interações", val: storiesW?.interactions_weight },
-                    { icon: "🔁", label: "Encaminhamentos", val: storiesW?.forwards_weight },
-                    { icon: "🖱️", label: "Cliques CTA", val: storiesW?.cta_clicks_weight },
+                    { icon: "🖼️", label: "Estático", val: mediaMult?.static_multiplier },
+                    { icon: "🎥", label: "Vídeo", val: mediaMult?.video_multiplier },
                   ].map(({ icon, label, val }) => (
                     <div key={label} className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-1.5">
                         <span>{icon}</span> {label}
                       </span>
                       <span className="font-mono font-semibold text-foreground tabular-nums">
-                        ×{val ?? "—"}
+                        ×{val ?? "1"}
                       </span>
                     </div>
                   ))}
                 </div>
                 <div className="pt-2 border-t border-border/40">
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Soma ponderada independente do tipo de conteúdo
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Multipliers */}
-            <Card className="border-border/60 bg-card/50">
-              <CardHeader className="pb-3 pt-4 px-4">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <span className="text-base">✖️</span> Multiplicadores
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-4 space-y-3">
-                <div className="space-y-2">
-                  {[
-                    { icon: "🔧", label: "Técnico", val: multipliers?.technical },
-                    { icon: "😂", label: "Meme", val: multipliers?.meme },
-                    { icon: "📣", label: "Anúncio", val: multipliers?.announcement },
-                  ].map(({ icon, label, val }) => (
-                    <div key={label} className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground flex items-center gap-1.5">
-                        <span>{icon}</span> {label}
-                      </span>
-                      <span className="font-mono font-semibold text-foreground tabular-nums">
-                        ×{val ?? "—"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div className="pt-2 border-t border-border/40">
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Aplicado apenas em posts de Feed
+                    Detectado automaticamente pela URL do post
                   </p>
                 </div>
               </CardContent>
