@@ -36,6 +36,8 @@ import {
   ChevronUp,
   Scroll,
   Calculator,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { EngagementWeights, Area } from "@/lib/types";
 import { useContentTypes } from "@/hooks/use-content-types";
@@ -296,6 +298,7 @@ function AwardFormDialog({
   const [endDate, setEndDate] = useState("");
   const [prizes, setPrizes] = useState<PrizeFormItem[]>([]);
   const [selectedAreas, setSelectedAreas] = useState<Area[]>([]);
+  const [isPublished, setIsPublished] = useState(true);
 
   useEffect(() => {
     if (!open) return;
@@ -303,6 +306,7 @@ function AwardFormDialog({
     setDescription(award?.description ?? "");
     setStartDate(award?.start_date ?? "");
     setEndDate(award?.end_date ?? "");
+    setIsPublished(award?.id ? (award.is_active ?? true) : false);
     setSelectedAreas(initialAreas);
     setPrizes(
       initialPrizes.map((p) => ({
@@ -349,12 +353,12 @@ function AwardFormDialog({
       if (awardId) {
         await supabase
           .from("awards")
-          .update({ title, description, start_date: startDate || null, end_date: endDate || null })
+          .update({ title, description, start_date: startDate || null, end_date: endDate || null, is_active: isPublished })
           .eq("id", awardId);
       } else {
         const { data } = await supabase
           .from("awards")
-          .insert({ title, description, start_date: startDate || null, end_date: endDate || null, is_active: true })
+          .insert({ title, description, start_date: startDate || null, end_date: endDate || null, is_active: isPublished })
           .select()
           .single();
         awardId = data!.id;
@@ -458,13 +462,29 @@ function AwardFormDialog({
           </TabsContent>
         </Tabs>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Salvando…" : "Salvar desafio"}
-          </Button>
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+          <div className="flex-1 flex items-center">
+            <button
+              type="button"
+              onClick={() => setIsPublished((v) => !v)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                isPublished
+                  ? "bg-green-500/15 text-green-400 hover:bg-green-500/25"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {isPublished ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              {isPublished ? "Publicado" : "Rascunho"}
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={onClose} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Salvando…" : "Salvar desafio"}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
