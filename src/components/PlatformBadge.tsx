@@ -11,6 +11,7 @@ const config: Record<string, { label: string; color: string; bg: string; icon?: 
   tiktok: { label: "TikTok", color: "text-foreground", bg: "bg-muted border-border" },
   youtube: { label: "YouTube", color: "text-red-400", bg: "bg-red-500/10 border-red-500/20", icon: Youtube },
   twitter: { label: "Twitter / X", color: "text-sky-400", bg: "bg-sky-500/10 border-sky-500/20", icon: Twitter },
+  reddit: { label: "Reddit", color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/20" },
   linkedin: { label: "LinkedIn", color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20", icon: Linkedin },
 };
 

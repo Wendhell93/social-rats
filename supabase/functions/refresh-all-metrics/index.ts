@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     const { data: posts, error: fetchErr } = await supabase
       .from('posts')
       .select('id, url, platform, format, content_type')
-      .or('platform.eq.instagram,platform.eq.tiktok,platform.eq.youtube')
+      .or('platform.eq.instagram,platform.eq.tiktok,platform.eq.youtube,platform.eq.twitter,platform.eq.reddit')
       .gte('created_at', since.toISOString())
       .order('created_at', { ascending: false });
 
@@ -230,6 +230,46 @@ async function scrapeOne(url: string, platform: string, apiKey: string) {
       };
     }
     return null;
+  }
+
+  if (platform === 'twitter') {
+    const res = await fetch(
+      `https://api.sociavault.com/v1/scrape/twitter/tweet?url=${encodeURIComponent(url)}`,
+      { method: 'GET', headers }
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    const tweet = json?.data;
+    if (!tweet) return null;
+    const legacy = tweet.legacy ?? tweet;
+    const views = tweet.views?.count ?? tweet.view_count ?? 0;
+    return {
+      likes: legacy.favorite_count ?? 0,
+      comments: legacy.reply_count ?? 0,
+      shares: (legacy.retweet_count ?? 0) + (legacy.quote_count ?? 0),
+      saves: legacy.bookmark_count ?? 0,
+      views: typeof views === 'string' ? parseInt(views, 10) || 0 : views,
+      views_pico: 0, interactions: 0, forwards: 0, cta_clicks: 0,
+    };
+  }
+
+  if (platform === 'reddit') {
+    const res = await fetch(
+      `https://api.sociavault.com/v1/scrape/reddit/post/comments?url=${encodeURIComponent(url)}&trim=true`,
+      { method: 'GET', headers }
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    const post = json?.data?.post;
+    if (!post) return null;
+    return {
+      likes: post.ups ?? post.score ?? 0,
+      comments: post.num_comments ?? 0,
+      shares: 0,
+      saves: 0,
+      views: 0,
+      views_pico: 0, interactions: 0, forwards: 0, cta_clicks: 0,
+    };
   }
 
   return null;

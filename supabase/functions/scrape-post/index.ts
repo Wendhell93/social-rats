@@ -47,6 +47,10 @@ Deno.serve(async (req) => {
       result = await scrapeTikTok(url, headers);
     } else if (platform === 'youtube') {
       result = await scrapeYouTube(url, headers);
+    } else if (platform === 'twitter') {
+      result = await scrapeTwitter(url, headers);
+    } else if (platform === 'reddit') {
+      result = await scrapeReddit(url, headers);
     } else {
       return jsonResponse(manualFallback(`Scraping não suportado para "${platform}". Preencha manualmente.`));
     }
@@ -222,6 +226,82 @@ async function scrapeYouTube(url: string, headers: Record<string, string>): Prom
   }
 
   return manualFallback('Nenhum endpoint do YouTube retornou dados. Preencha manualmente.');
+}
+
+// ─── Twitter / X ─────────────────────────────────────────────────────────────
+
+async function scrapeTwitter(url: string, headers: Record<string, string>): Promise<ScrapeResult> {
+  const apiUrl = `https://api.sociavault.com/v1/scrape/twitter/tweet?url=${encodeURIComponent(url)}`;
+
+  console.log('Scraping Twitter:', url);
+  const response = await fetch(apiUrl, { method: 'GET', headers });
+
+  if (!response.ok) {
+    const text = await response.text();
+    console.error('SociaVault Twitter error:', response.status, text);
+    return manualFallback(`SociaVault retornou status ${response.status}`);
+  }
+
+  const json = await response.json();
+  const tweet = json?.data ?? null;
+
+  if (!tweet) {
+    console.error('Twitter: unexpected response structure', JSON.stringify(json).slice(0, 500));
+    return manualFallback('Resposta inesperada da API do Twitter');
+  }
+
+  const legacy = tweet.legacy ?? tweet;
+  const views = tweet.views?.count ?? tweet.view_count ?? 0;
+
+  return {
+    success: true,
+    scraped: true,
+    likes: legacy.favorite_count ?? 0,
+    comments: legacy.reply_count ?? 0,
+    shares: (legacy.retweet_count ?? 0) + (legacy.quote_count ?? 0),
+    saves: legacy.bookmark_count ?? 0,
+    views: typeof views === 'string' ? parseInt(views, 10) || 0 : views,
+    title: (legacy.full_text || '').slice(0, 200) || null,
+    thumbnail_url: null,
+  };
+}
+
+// ─── Reddit ──────────────────────────────────────────────────────────────────
+
+async function scrapeReddit(url: string, headers: Record<string, string>): Promise<ScrapeResult> {
+  // Use post-comments endpoint which also returns post data
+  const apiUrl = `https://api.sociavault.com/v1/scrape/reddit/post/comments?url=${encodeURIComponent(url)}&trim=true`;
+
+  console.log('Scraping Reddit:', url);
+  const response = await fetch(apiUrl, { method: 'GET', headers });
+
+  if (!response.ok) {
+    const text = await response.text();
+    console.error('SociaVault Reddit error:', response.status, text);
+    return manualFallback(`SociaVault retornou status ${response.status}`);
+  }
+
+  const json = await response.json();
+  const post = json?.data?.post ?? null;
+
+  if (!post) {
+    console.error('Reddit: unexpected response structure', JSON.stringify(json).slice(0, 500));
+    return manualFallback('Resposta inesperada da API do Reddit');
+  }
+
+  return {
+    success: true,
+    scraped: true,
+    likes: post.ups ?? post.score ?? 0,
+    comments: post.num_comments ?? 0,
+    shares: 0,
+    saves: 0,
+    views: 0,
+    title: (post.title || '').slice(0, 200) || null,
+    thumbnail_url: post.thumbnail && post.thumbnail !== 'self' && post.thumbnail !== 'default'
+      ? post.thumbnail
+      : null,
+  };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

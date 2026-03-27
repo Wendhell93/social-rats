@@ -240,7 +240,7 @@ export default function NewPost() {
               <div className="flex items-center gap-2 flex-wrap">
                 <PlatformBadge platform={platform} />
                 <MediaTypeBadge mediaType={detectedMediaType} />
-                {isAdmin && (platform === "instagram" || platform === "tiktok" || platform === "youtube") && (
+                {isAdmin && (platform === "instagram" || platform === "tiktok" || platform === "youtube" || platform === "twitter" || platform === "reddit") && (
                   <Button
                     type="button"
                     size="sm"

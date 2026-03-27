@@ -111,6 +111,7 @@ export function detectPlatform(url: string): string | null {
   if (url.includes("tiktok.com")) return "tiktok";
   if (url.includes("youtube.com") || url.includes("youtu.be")) return "youtube";
   if (url.includes("twitter.com") || url.includes("x.com")) return "twitter";
+  if (url.includes("reddit.com") || url.includes("redd.it")) return "reddit";
   if (url.includes("linkedin.com")) return "linkedin";
   return null;
 }
@@ -131,6 +132,12 @@ export function detectMediaType(url: string, platform: string | null): MediaType
       return "video";
     case "youtube":
       return "video";
+    case "twitter":
+      // Twitter posts can have video but default to static
+      return "static";
+    case "reddit":
+      // Reddit posts are mostly text/image; videos are on v.redd.it
+      return url.includes("v.redd.it") ? "video" : "static";
     default:
       return "static";
   }
