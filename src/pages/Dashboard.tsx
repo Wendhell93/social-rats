@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, FileText, Trophy, TrendingUp, Heart, MessageCircle, Share2, Bookmark, Eye, RefreshCw, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Trophy, TrendingUp, Heart, MessageCircle, Share2, Bookmark, Eye, RefreshCw, Clock, CheckCircle2, XCircle, Loader2, Instagram, Youtube, Twitter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePeriodFilter } from "@/hooks/use-period-filter";
 import { useAreaCreatorIds } from "@/hooks/use-area-filter";
@@ -202,6 +202,23 @@ export default function Dashboard() {
                 </div>
                 <p className="text-xl font-bold">{value.toLocaleString()}</p>
               </div>
+            ))}
+          </div>
+
+          {/* Supported Platforms */}
+          <div className="flex items-center gap-3 mb-8 flex-wrap">
+            <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Plataformas:</span>
+            {[
+              { label: "Instagram", icon: Instagram, color: "text-pink-400", bg: "bg-pink-500/10 border-pink-500/20" },
+              { label: "TikTok", color: "text-foreground", bg: "bg-muted border-border", emoji: "🎵" },
+              { label: "YouTube", icon: Youtube, color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
+              { label: "Twitter / X", icon: Twitter, color: "text-sky-400", bg: "bg-sky-500/10 border-sky-500/20" },
+              { label: "Reddit", color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/20", emoji: "🤖" },
+            ].map(({ label, icon: Icon, color, bg, emoji }) => (
+              <span key={label} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium ${bg} ${color}`}>
+                {Icon ? <Icon className="w-3.5 h-3.5" /> : <span className="text-sm leading-none">{emoji}</span>}
+                {label}
+              </span>
             ))}
           </div>
 

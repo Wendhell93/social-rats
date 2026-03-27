@@ -232,7 +232,7 @@ export default function NewPost() {
           <CardHeader className="pb-3"><CardTitle className="text-base">Link do Post *</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <Input
-              placeholder="https://www.instagram.com/p/... ou https://www.tiktok.com/@..."
+              placeholder="Cole o link do Instagram, TikTok, YouTube, Twitter/X ou Reddit"
               value={url} onChange={e => setUrl(e.target.value)}
               className="bg-input border-border"
             />
@@ -266,7 +266,7 @@ export default function NewPost() {
                 )}
               </div>
             )}
-            {url && !platform && <p className="text-xs text-destructive">URL não reconhecida. Use links do Instagram, TikTok, YouTube, etc.</p>}
+            {url && !platform && <p className="text-xs text-destructive">URL não reconhecida. Use links do Instagram, TikTok, YouTube, Twitter/X ou Reddit.</p>}
             {duplicateInfo && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
                 <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
