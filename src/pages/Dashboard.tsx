@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, FileText, Trophy, TrendingUp, Heart, MessageCircle, Share2, Bookmark, Eye, RefreshCw } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Trophy, TrendingUp, Heart, MessageCircle, Share2, Bookmark, Eye, RefreshCw, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePeriodFilter } from "@/hooks/use-period-filter";
 import { useAreaCreatorIds } from "@/hooks/use-area-filter";
@@ -23,6 +23,25 @@ export default function Dashboard() {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
   const [refreshing, setRefreshing] = useState(false);
+  const [lastScrape, setLastScrape] = useState<{
+    status: string;
+    triggered_by: string;
+    created_at: string;
+    finished_at: string | null;
+    posts_total: number | null;
+    posts_updated: number | null;
+    posts_failed: number | null;
+  } | null>(null);
+
+  async function loadLastScrape() {
+    const { data } = await supabase
+      .from("scrape_logs")
+      .select("status, triggered_by, created_at, finished_at, posts_total, posts_updated, posts_failed")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    if (data) setLastScrape(data as any);
+  }
 
   useEffect(() => {
     async function load() {
@@ -37,6 +56,7 @@ export default function Dashboard() {
       setLoading(false);
     }
     load();
+    loadLastScrape();
   }, []);
 
   const filteredPc = useMemo(() => allPostCreators.filter(pc => pc.post && inPeriod(pc.post.created_at) && matchesArea(pc.creator_id)), [allPostCreators, inPeriod, matchesArea]);
@@ -133,6 +153,7 @@ export default function Dashboard() {
                     ]);
                     if (posts) setAllPosts(posts as PostRow[]);
                     if (pc) setAllPostCreators(pc as PostCreatorRow[]);
+                    loadLastScrape();
                   } else {
                     toast({ title: "Erro ao atualizar", description: data.error || "Tente novamente.", variant: "destructive" });
                   }
@@ -183,6 +204,57 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+
+          {/* Scrape Status Card (admin only) */}
+          {isAdmin && lastScrape && (
+            <div className={`border rounded-xl p-4 mb-8 flex items-center gap-4 ${
+              lastScrape.status === "done"
+                ? "bg-green-500/5 border-green-500/30"
+                : lastScrape.status === "error"
+                ? "bg-red-500/5 border-red-500/30"
+                : "bg-yellow-500/5 border-yellow-500/30"
+            }`}>
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                lastScrape.status === "done"
+                  ? "bg-green-500/15"
+                  : lastScrape.status === "error"
+                  ? "bg-red-500/15"
+                  : "bg-yellow-500/15"
+              }`}>
+                {lastScrape.status === "done" ? (
+                  <CheckCircle2 className="w-5 h-5 text-green-400" />
+                ) : lastScrape.status === "error" ? (
+                  <XCircle className="w-5 h-5 text-red-400" />
+                ) : (
+                  <Loader2 className="w-5 h-5 text-yellow-400 animate-spin" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">
+                  {lastScrape.status === "done"
+                    ? "Scraping concluido"
+                    : lastScrape.status === "error"
+                    ? "Scraping falhou"
+                    : "Scraping em andamento..."}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {lastScrape.triggered_by === "cron" ? "Agendado (4h)" : "Manual"}
+                  {" \u2022 "}
+                  {new Date(lastScrape.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  {lastScrape.status === "done" && lastScrape.posts_total != null && (
+                    <> {" \u2022 "} {lastScrape.posts_updated}/{lastScrape.posts_total} posts atualizados
+                    {(lastScrape.posts_failed ?? 0) > 0 && (
+                      <span className="text-red-400"> ({lastScrape.posts_failed} falharam)</span>
+                    )}</>
+                  )}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Prox: 4h</span>
+              </div>
+            </div>
+          )}
 
           <div className="bg-card border border-border rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
