@@ -26,7 +26,7 @@ export default function Dashboard() {
   const [lastScrape, setLastScrape] = useState<{
     status: string;
     triggered_by: string;
-    created_at: string;
+    started_at: string;
     finished_at: string | null;
     posts_total: number | null;
     posts_updated: number | null;
@@ -36,8 +36,8 @@ export default function Dashboard() {
   async function loadLastScrape() {
     const { data } = await supabase
       .from("scrape_logs")
-      .select("status, triggered_by, created_at, finished_at, posts_total, posts_updated, posts_failed")
-      .order("created_at", { ascending: false })
+      .select("status, triggered_by, started_at, finished_at, posts_total, posts_updated, posts_failed")
+      .order("started_at", { ascending: false })
       .limit(1)
       .single();
     if (data) setLastScrape(data as any);
@@ -240,7 +240,7 @@ export default function Dashboard() {
                 <p className="text-xs text-muted-foreground">
                   {lastScrape.triggered_by === "cron" ? "Agendado (4h)" : "Manual"}
                   {" \u2022 "}
-                  {new Date(lastScrape.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  {new Date(lastScrape.started_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                   {lastScrape.status === "done" && lastScrape.posts_total != null && (
                     <> {" \u2022 "} {lastScrape.posts_updated}/{lastScrape.posts_total} posts atualizados
                     {(lastScrape.posts_failed ?? 0) > 0 && (
