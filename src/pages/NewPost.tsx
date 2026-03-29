@@ -201,15 +201,25 @@ export default function NewPost() {
       toast({ title: "Post salvo, mas erro ao vincular criadores", description: pcError.message, variant: "destructive" });
     } else {
       // Generate raffle vouchers for this post
+      let voucherCount = 0;
       try {
         const { generateVouchersForPost } = await import("@/lib/raffleVouchers");
-        await generateVouchersForPost(
+        voucherCount = await generateVouchersForPost(
           post.id,
           selectedCreators.map(c => c.id),
           postedAt ? postedAt.toISOString() : new Date().toISOString()
-        );
+        ) || 0;
       } catch { /* silent — don't block post creation */ }
-      toast({ title: "Post cadastrado com sucesso!" });
+
+      if (voucherCount > 0) {
+        toast({
+          title: "Post cadastrado com sucesso!",
+          description: `Você ganhou ${voucherCount} voucher${voucherCount > 1 ? "s" : ""} para sorteio!`,
+          duration: 6000,
+        });
+      } else {
+        toast({ title: "Post cadastrado com sucesso!" });
+      }
       navigate("/posts");
     }
     setSaving(false);

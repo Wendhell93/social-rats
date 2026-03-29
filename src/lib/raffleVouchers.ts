@@ -108,6 +108,8 @@ export async function generateVouchersForPost(
   if (inserts.length > 0) {
     await supabase.from("raffle_vouchers").insert(inserts);
   }
+
+  return inserts.length;
 }
 
 /**
