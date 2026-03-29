@@ -200,6 +200,15 @@ export default function NewPost() {
     if (pcError) {
       toast({ title: "Post salvo, mas erro ao vincular criadores", description: pcError.message, variant: "destructive" });
     } else {
+      // Generate raffle vouchers for this post
+      try {
+        const { generateVouchersForPost } = await import("@/lib/raffleVouchers");
+        await generateVouchersForPost(
+          post.id,
+          selectedCreators.map(c => c.id),
+          postedAt ? postedAt.toISOString() : new Date().toISOString()
+        );
+      } catch { /* silent — don't block post creation */ }
       toast({ title: "Post cadastrado com sucesso!" });
       navigate("/posts");
     }

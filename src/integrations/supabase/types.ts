@@ -376,6 +376,211 @@ export type Database = {
         }
         Relationships: []
       }
+      raffles: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          start_date: string
+          end_date: string
+          max_vouchers_per_creator: number
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          start_date: string
+          end_date: string
+          max_vouchers_per_creator?: number
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          start_date?: string
+          end_date?: string
+          max_vouchers_per_creator?: number
+          status?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      raffle_areas: {
+        Row: {
+          id: string
+          raffle_id: string
+          area_id: string
+        }
+        Insert: {
+          id?: string
+          raffle_id: string
+          area_id: string
+        }
+        Update: {
+          id?: string
+          raffle_id?: string
+          area_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raffle_areas_raffle_id_fkey"
+            columns: ["raffle_id"]
+            isOneToOne: false
+            referencedRelation: "raffles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raffle_areas_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      raffle_prizes: {
+        Row: {
+          id: string
+          raffle_id: string
+          name: string
+          description: string | null
+          image_url: string | null
+          position: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          raffle_id: string
+          name: string
+          description?: string | null
+          image_url?: string | null
+          position?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          raffle_id?: string
+          name?: string
+          description?: string | null
+          image_url?: string | null
+          position?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raffle_prizes_raffle_id_fkey"
+            columns: ["raffle_id"]
+            isOneToOne: false
+            referencedRelation: "raffles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      raffle_vouchers: {
+        Row: {
+          id: string
+          raffle_id: string
+          creator_id: string
+          post_id: string
+          area_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          raffle_id: string
+          creator_id: string
+          post_id: string
+          area_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          raffle_id?: string
+          creator_id?: string
+          post_id?: string
+          area_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raffle_vouchers_raffle_id_fkey"
+            columns: ["raffle_id"]
+            isOneToOne: false
+            referencedRelation: "raffles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raffle_vouchers_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raffle_vouchers_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      raffle_winners: {
+        Row: {
+          id: string
+          raffle_id: string
+          creator_id: string
+          voucher_id: string
+          prize_id: string | null
+          drawn_at: string
+          position: number
+        }
+        Insert: {
+          id?: string
+          raffle_id: string
+          creator_id: string
+          voucher_id: string
+          prize_id?: string | null
+          drawn_at?: string
+          position?: number
+        }
+        Update: {
+          id?: string
+          raffle_id?: string
+          creator_id?: string
+          voucher_id?: string
+          prize_id?: string | null
+          drawn_at?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raffle_winners_raffle_id_fkey"
+            columns: ["raffle_id"]
+            isOneToOne: false
+            referencedRelation: "raffles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raffle_winners_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raffle_winners_voucher_id_fkey"
+            columns: ["voucher_id"]
+            isOneToOne: false
+            referencedRelation: "raffle_vouchers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stories_weights: {
         Row: {
           cta_clicks_weight: number

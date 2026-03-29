@@ -100,6 +100,7 @@ export default function Creators() {
 
   async function save() {
     if (!form.name.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
+    if (formAreas.length === 0) { toast({ title: "Selecione ao menos uma área", description: "A área é obrigatória para participar dos sorteios.", variant: "destructive" }); return; }
     setSaving(true);
     let avatar_url = form.avatar_url.trim() || null;
     if (avatarTab === "upload" && uploadFile) {

@@ -152,6 +152,17 @@ export default function EditPost() {
     await supabase.from("post_creators").delete().eq("post_id", post.id);
     await supabase.from("post_creators").insert(selectedCreators.map(c => ({ post_id: post.id, creator_id: c.id })));
 
+    // Re-generate raffle vouchers
+    try {
+      const { deleteVouchersForPost, generateVouchersForPost } = await import("@/lib/raffleVouchers");
+      await deleteVouchersForPost(post.id);
+      await generateVouchersForPost(
+        post.id,
+        selectedCreators.map(c => c.id),
+        postedAt ? postedAt.toISOString() : post.created_at
+      );
+    } catch { /* silent */ }
+
     toast({ title: "Post atualizado!" });
     navigate("/posts");
     setSaving(false);

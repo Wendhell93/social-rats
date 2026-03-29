@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { User, Upload, X, Link as LinkIcon, Loader2, Save } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { User, Upload, X, Link as LinkIcon, Loader2, Save, Ticket } from "lucide-react";
 
 export default function MyProfile() {
   const { user, profile, refreshProfile, loading: authLoading } = useAuth();
@@ -71,6 +72,10 @@ export default function MyProfile() {
   async function handleSave() {
     if (!name.trim()) {
       toast({ title: "Nome é obrigatório", variant: "destructive" });
+      return;
+    }
+    if (selectedAreas.length === 0) {
+      toast({ title: "Selecione ao menos uma área", description: "A área é obrigatória para participar dos sorteios.", variant: "destructive" });
       return;
     }
     if (!user) return;
@@ -156,7 +161,7 @@ export default function MyProfile() {
 
         {/* Áreas */}
         <Card className="bg-card border-border">
-          <CardHeader className="pb-3"><CardTitle className="text-base">Áreas</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base">Área *</CardTitle></CardHeader>
           <CardContent>
             <AreaPicker selected={selectedAreas} onChange={setSelectedAreas} />
           </CardContent>
@@ -208,7 +213,80 @@ export default function MyProfile() {
           {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
           {isNew ? "Criar Perfil" : "Salvar Alterações"}
         </Button>
+
+        {/* Meus Vouchers - só aparece se perfil já existe */}
+        {!isNew && profile && <MyVouchers memberId={profile.id} />}
       </div>
     </div>
+  );
+}
+
+function MyVouchers({ memberId }: { memberId: string }) {
+  const [vouchers, setVouchers] = useState<{ raffle_name: string; raffle_id: string; count: number; max: number; status: string }[]>([]);
+
+  useEffect(() => {
+    async function load() {
+      const { data } = await supabase
+        .from("raffle_vouchers")
+        .select("raffle_id, raffle:raffles(name, max_vouchers_per_creator, status)")
+        .eq("creator_id", memberId);
+
+      if (!data) return;
+
+      const map = new Map<string, { raffle_name: string; raffle_id: string; count: number; max: number; status: string }>();
+      for (const v of data as any[]) {
+        if (!v.raffle) continue;
+        if (!map.has(v.raffle_id)) {
+          map.set(v.raffle_id, {
+            raffle_name: v.raffle.name,
+            raffle_id: v.raffle_id,
+            count: 0,
+            max: v.raffle.max_vouchers_per_creator,
+            status: v.raffle.status,
+          });
+        }
+        map.get(v.raffle_id)!.count++;
+      }
+      setVouchers(Array.from(map.values()));
+    }
+    load();
+  }, [memberId]);
+
+  if (vouchers.length === 0) return null;
+
+  const active = vouchers.filter(v => v.status === "active");
+  const finished = vouchers.filter(v => v.status !== "active");
+
+  return (
+    <Card className="bg-card border-border mt-4">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Ticket className="w-4 h-4 text-amber-400" />
+          Meus Vouchers
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {active.length > 0 && active.map(v => (
+          <div key={v.raffle_id} className="flex items-center justify-between py-1.5">
+            <span className="text-sm">{v.raffle_name}</span>
+            <Badge variant="secondary" className="text-xs">
+              <Ticket className="w-3 h-3 mr-1" />
+              {v.count}/{v.max}
+            </Badge>
+          </div>
+        ))}
+        {finished.length > 0 && (
+          <div className="pt-2 border-t border-border/40">
+            <p className="text-[10px] text-muted-foreground mb-1">Finalizados</p>
+            {finished.map(v => (
+              <div key={v.raffle_id} className="flex items-center justify-between py-1 opacity-60">
+                <span className="text-xs">{v.raffle_name}</span>
+                <span className="text-[10px] text-muted-foreground">{v.count} vouchers</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

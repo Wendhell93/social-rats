@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from "react";
+import { RafflesSection } from "@/components/RafflesSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Member } from "@/lib/types";
@@ -1199,6 +1200,9 @@ export default function Awards() {
           )}
         </>
       )}
+
+      {/* ── Raffle Section ── */}
+      <RafflesSection />
 
       {/* Form Dialog */}
       <AwardFormDialog
