@@ -8,6 +8,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
  *   CRON_SECRET        — auto-injected by Vercel for cron auth
  *   REFRESH_SECRET     — shared secret to authenticate with the edge function
  *   SUPABASE_URL       — e.g. https://kcfopagleppcazuodyal.supabase.co
+ *   VITE_SUPABASE_PUBLISHABLE_KEY — Supabase anon key (required for edge function auth)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Vercel Cron sends this header to prove it's a legitimate cron invocation
@@ -19,9 +20,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const supabaseUrl = process.env.SUPABASE_URL || "https://kcfopagleppcazuodyal.supabase.co";
   const refreshSecret = process.env.REFRESH_SECRET;
+  const supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
   if (!refreshSecret) {
     return res.status(500).json({ error: "REFRESH_SECRET not configured" });
+  }
+
+  if (!supabaseAnonKey) {
+    return res.status(500).json({ error: "VITE_SUPABASE_PUBLISHABLE_KEY not configured" });
   }
 
   try {
@@ -29,6 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseAnonKey}`,
         "x-refresh-secret": refreshSecret,
       },
       body: JSON.stringify({
