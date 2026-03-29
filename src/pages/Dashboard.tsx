@@ -139,6 +139,7 @@ export default function Dashboard() {
                     method: "POST",
                     headers: {
                       "Content-Type": "application/json",
+                      "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || ""}`,
                       "x-refresh-secret": import.meta.env.VITE_REFRESH_SECRET || "",
                     },
                     body: JSON.stringify({ triggered_by: "manual", days_back: 30 }),
