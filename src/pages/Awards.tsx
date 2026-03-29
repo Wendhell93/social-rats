@@ -25,6 +25,10 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Gift,
   Plus,
   Pencil,
@@ -1179,16 +1183,31 @@ export default function Awards() {
                         )}
                         {isAdmin && (
                           <div className="flex justify-end pt-3 border-t border-border/40 mt-3">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1.5"
-                              disabled={deletingId === award.id}
-                              onClick={() => handleDeleteAward(award.id)}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              {deletingId === award.id ? "Removendo…" : "Remover desafio"}
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs gap-1.5"
+                                  disabled={deletingId === award.id}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  {deletingId === award.id ? "Removendo…" : "Remover desafio"}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remover desafio?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    O desafio "{award.title}" e todos os prêmios associados serão excluídos permanentemente. Esta ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteAward(award.id)} className="bg-destructive hover:bg-destructive/90">Remover</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         )}
                       </AccordionContent>

@@ -357,12 +357,44 @@ export function RafflesSection() {
                   {/* Admin: finish/delete */}
                   {isAdmin && (
                     <div className="flex gap-2 pt-1 border-t border-border/30">
-                      <Button size="sm" variant="ghost" className="text-[10px] text-muted-foreground" onClick={() => handleFinish(raffle.id)}>
-                        Finalizar sorteio
-                      </Button>
-                      <Button size="sm" variant="ghost" className="text-[10px] text-destructive" onClick={() => handleDelete(raffle.id)}>
-                        Remover
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="ghost" className="text-[10px] text-muted-foreground">
+                            Finalizar sorteio
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Finalizar sorteio?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              O sorteio "{raffle.name}" será encerrado e não será mais possível sortear novos ganhadores. Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleFinish(raffle.id)}>Finalizar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="ghost" className="text-[10px] text-destructive">
+                            Remover
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remover sorteio?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              O sorteio "{raffle.name}" e todos os vouchers e ganhadores associados serão excluídos permanentemente. Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(raffle.id)} className="bg-destructive hover:bg-destructive/90">Remover</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   )}
                 </CardContent>
