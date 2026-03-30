@@ -31,8 +31,11 @@ import { WizardProgress } from "@/components/wizard/WizardProgress";
 import { CelebrationOverlay } from "@/components/CelebrationOverlay";
 import { hapticMedium } from "@/lib/haptics";
 
-const STEPS = 4;
-const STEP_LABELS = ["Link", "Criador", "Dados", "Enviar"];
+// Steps vary by role: admins see metrics step, users skip it
+const ADMIN_STEPS = 4;
+const ADMIN_LABELS = ["Link", "Criador", "Dados", "Enviar"];
+const USER_STEPS = 3;
+const USER_LABELS = ["Link", "Criador", "Enviar"];
 
 export default function NewPost() {
   const navigate = useNavigate();
@@ -216,6 +219,16 @@ export default function NewPost() {
     !selectedCreators.find(sc => sc.id === c.id)
   );
 
+  // Dynamic steps based on role
+  const totalSteps = isAdmin ? ADMIN_STEPS : USER_STEPS;
+  const stepLabels = isAdmin ? ADMIN_LABELS : USER_LABELS;
+
+  // Map logical step to content:
+  // Admin:  1=URL, 2=Creators, 3=Metrics, 4=Review
+  // User:   1=URL, 2=Creators, 3=Review (skip metrics)
+  const isMetricsStep = isAdmin && step === 3;
+  const isReviewStep = isAdmin ? step === 4 : step === 3;
+
   // Step validation
   const canNext: Record<number, boolean> = {
     1: !!platform && !duplicateInfo,
@@ -225,7 +238,7 @@ export default function NewPost() {
   };
 
   function goNext() {
-    if (step < STEPS && canNext[step]) {
+    if (step < totalSteps && canNext[step]) {
       hapticMedium();
       setStep(step + 1);
     }
@@ -246,7 +259,7 @@ export default function NewPost() {
         <ArrowLeft className="w-4 h-4" /> {step === 1 ? "Voltar" : "Voltar"}
       </button>
 
-      <WizardProgress currentStep={step} totalSteps={STEPS} labels={STEP_LABELS} />
+      <WizardProgress currentStep={step} totalSteps={totalSteps} labels={stepLabels} />
 
       {/* ── STEP 1: URL ── */}
       {step === 1 && (
@@ -380,8 +393,8 @@ export default function NewPost() {
         </div>
       )}
 
-      {/* ── STEP 3: Date + Metrics ── */}
-      {step === 3 && (
+      {/* ── STEP 3 (admin only): Date + Metrics ── */}
+      {isMetricsStep && (
         <div className="space-y-4 animate-fade-in">
           <div className="text-center mb-2">
             <h1 className="text-xl md:text-2xl font-bold">Dados do post</h1>
@@ -440,8 +453,8 @@ export default function NewPost() {
         </div>
       )}
 
-      {/* ── STEP 4: Review + Submit ── */}
-      {step === 4 && (
+      {/* ── Review Step (admin: step 4, user: step 3) ── */}
+      {isReviewStep && (
         <div className="space-y-4 animate-fade-in">
           <div className="text-center mb-2">
             <h1 className="text-xl md:text-2xl font-bold">Tudo certo?</h1>
@@ -475,17 +488,24 @@ export default function NewPost() {
                 ))}
               </div>
               {postedAt && <p className="text-xs text-muted-foreground">Publicado em {format(postedAt, "dd/MM/yyyy", { locale: ptBR })}</p>}
-              <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/40">
+              {!isAdmin && (
+                <p className="text-xs text-muted-foreground pt-2 border-t border-border/40">
+                  As métricas serão preenchidas automaticamente pelo sistema.
+                </p>
+              )}
+              {isAdmin && <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border/40">
                 <span>❤️ {metrics.likes}</span>
                 <span>💬 {metrics.comments}</span>
                 <span>🔁 {metrics.shares}</span>
                 <span>🔖 {metrics.saves}</span>
                 <span>👁 {metrics.views}</span>
-              </div>
-              <div className="flex items-center justify-between pt-2 border-t border-border/40">
-                <span className="text-sm font-medium">Score total</span>
-                <span className="text-xl font-bold gradient-text">{previewScore.toFixed(0)} pts</span>
-              </div>
+              </div>}
+              {isAdmin && (
+                <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                  <span className="text-sm font-medium">Score total</span>
+                  <span className="text-xl font-bold gradient-text">{previewScore.toFixed(0)} pts</span>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -498,7 +518,7 @@ export default function NewPost() {
             <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
           </Button>
         )}
-        {step < STEPS && (
+        {step < totalSteps && (
           <Button
             className="flex-1 gradient-primary text-white border-0 glow-blue min-h-[44px]"
             disabled={!canNext[step]}
@@ -507,7 +527,7 @@ export default function NewPost() {
             Próximo <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         )}
-        {step === STEPS && (
+        {step === totalSteps && (
           <Button
             className="flex-1 gradient-primary text-white border-0 glow-blue min-h-[48px] text-base"
             disabled={saving || selectedCreators.length === 0 || !!duplicateInfo}
