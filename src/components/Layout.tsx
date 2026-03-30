@@ -189,9 +189,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* ── Main content ───────────────────────────────────── */}
-      <main className="flex-1 overflow-auto min-h-screen pt-14 pb-16 md:pt-0 md:pb-0">
+      <main className="flex-1 overflow-auto min-h-screen pt-14 pb-16 md:pt-0 md:pb-0 relative">
         {(["/", "/ranking", "/posts", "/creators"].includes(location.pathname)) && (
-          <div className="flex items-center justify-end gap-2 px-4 md:px-8 pt-4 md:pt-6 pb-0 flex-wrap">
+          <div className="absolute top-14 md:top-3 right-3 md:right-6 z-10 flex items-center gap-2 flex-wrap">
             <AreaFilter value={areaFilter} onChange={setAreaFilter} />
             <PeriodSelector />
           </div>
