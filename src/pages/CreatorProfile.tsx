@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Creator, Post, EngagementWeights } from "@/lib/types";
 import { PlatformBadge } from "@/components/PlatformBadge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Heart, MessageCircle, Share2, Bookmark, Trophy, FileText, TrendingUp, ExternalLink, CalendarDays, Eye } from "lucide-react";
+import { ArrowLeft, User, Heart, MessageCircle, Share2, Bookmark, Trophy, FileText, TrendingUp, ExternalLink, CalendarDays, Eye, Ticket, Award } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -18,6 +19,8 @@ export default function CreatorProfile() {
   const [weights, setWeights] = useState<EngagementWeights | null>(null);
   const [rank, setRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [vouchers, setVouchers] = useState<{ raffle_name: string; count: number; max: number }[]>([]);
+  const [wins, setWins] = useState<{ raffle_name: string; position: number; drawn_at: string }[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -44,6 +47,36 @@ export default function CreatorProfile() {
         const myRank = sorted.findIndex(([cid]) => cid === id) + 1;
         setRank(myRank || null);
       }
+      // Fetch vouchers for active raffles
+      const { data: voucherData } = await supabase
+        .from("raffle_vouchers")
+        .select("raffle_id, raffle:raffles(name, max_vouchers_per_creator, status)")
+        .eq("creator_id", id!);
+
+      if (voucherData) {
+        const vMap = new Map<string, { raffle_name: string; count: number; max: number }>();
+        for (const v of voucherData as any[]) {
+          if (!v.raffle || v.raffle.status !== "active") continue;
+          if (!vMap.has(v.raffle_id)) vMap.set(v.raffle_id, { raffle_name: v.raffle.name, count: 0, max: v.raffle.max_vouchers_per_creator });
+          vMap.get(v.raffle_id)!.count++;
+        }
+        setVouchers(Array.from(vMap.values()));
+      }
+
+      // Fetch raffle wins
+      const { data: winData } = await supabase
+        .from("raffle_winners")
+        .select("position, drawn_at, raffle:raffles(name)")
+        .eq("creator_id", id!);
+
+      if (winData) {
+        setWins((winData as any[]).filter(w => w.raffle).map(w => ({
+          raffle_name: w.raffle.name,
+          position: w.position,
+          drawn_at: w.drawn_at,
+        })));
+      }
+
       setLoading(false);
     }
     load();
@@ -117,6 +150,48 @@ export default function CreatorProfile() {
           </div>
         ))}
       </div>
+
+      {/* Vouchers + Wins */}
+      {(vouchers.length > 0 || wins.length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+          {vouchers.length > 0 && (
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Ticket className="w-4 h-4 text-amber-400" />
+                <h3 className="font-semibold text-sm">Vouchers Ativos</h3>
+              </div>
+              <div className="space-y-2">
+                {vouchers.map((v, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <span className="text-sm truncate">{v.raffle_name}</span>
+                    <Badge variant="secondary" className="text-xs flex-shrink-0">
+                      <Ticket className="w-3 h-3 mr-1" />{v.count}/{v.max}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {wins.length > 0 && (
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Award className="w-4 h-4 text-amber-400" />
+                <h3 className="font-semibold text-sm">Sorteios Ganhos</h3>
+              </div>
+              <div className="space-y-2">
+                {wins.map((w, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <span className="text-sm truncate">{w.raffle_name}</span>
+                    <Badge className="text-xs bg-amber-400/10 text-amber-400 border-amber-400/20 flex-shrink-0">
+                      {w.position}o lugar
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Chart */}
       {chartData.length > 1 && (

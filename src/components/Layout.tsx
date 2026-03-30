@@ -117,7 +117,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { user, isAdmin, signOut } = useAuth();
   const { areaFilter, setAreaFilter } = useAreaFilter();
-  const [topMenuOpen, setTopMenuOpen] = useState(false);
   const [bottomMenuOpen, setBottomMenuOpen] = useState(false);
   const [pendingDisputes, setPendingDisputes] = useState(0);
 
@@ -144,7 +143,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
   async function handleSignOut() {
     await signOut();
     navigate("/");
-    setTopMenuOpen(false);
     setBottomMenuOpen(false);
   }
 
@@ -163,35 +161,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <SidebarContent navItems={navItems} user={user} isAdmin={isAdmin} onSignOut={handleSignOut} />
       </aside>
 
-      {/* ── Mobile top bar ─────────────────────────────────── */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-4 border-b border-sidebar-border" style={{ background: "hsl(225 28% 6%)" }}>
-        <div className="flex items-center gap-2.5">
-          <RatIcon size={28} />
+      {/* ── Mobile top bar (logo only — nav is in bottom bar) ── */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 h-12 flex items-center justify-center px-4 border-b border-sidebar-border/50" style={{ background: "hsl(225 28% 6% / 0.9)", backdropFilter: "blur(8px)" }}>
+        <div className="flex items-center gap-2">
+          <RatIcon size={24} />
           <p className="text-sm font-bold text-foreground">SocialRats</p>
         </div>
-
-        {/* "Mais" sheet trigger (hamburger) */}
-        <Sheet open={topMenuOpen} onOpenChange={setTopMenuOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
-              <Menu className="w-5 h-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-72 p-0 border-sidebar-border" style={{ background: "hsl(225 28% 6%)" }}>
-            <div className="px-6 py-5 border-b border-sidebar-border">
-              <p className="text-sm font-bold text-foreground">Menu</p>
-            </div>
-            <div className="flex flex-col h-[calc(100%-57px)]" onClick={() => setTopMenuOpen(false)}>
-              <SidebarContent navItems={navItems} user={user} isAdmin={isAdmin} onSignOut={handleSignOut} />
-            </div>
-          </SheetContent>
-        </Sheet>
       </div>
 
       {/* ── Main content ───────────────────────────────────── */}
-      <main className="flex-1 overflow-auto min-h-screen pt-14 pb-16 md:pt-0 md:pb-0 relative">
+      <main className="flex-1 overflow-auto min-h-screen pt-12 pb-16 md:pt-0 md:pb-0 relative">
         {(["/", "/ranking", "/posts", "/creators"].includes(location.pathname)) && (
-          <div className="absolute top-14 md:top-3 right-3 md:right-6 z-10 flex items-center gap-2 flex-wrap">
+          <div className="absolute top-12 md:top-3 right-3 md:right-6 z-10 flex items-center gap-2 flex-wrap">
             <AreaFilter value={areaFilter} onChange={setAreaFilter} />
             <PeriodSelector />
           </div>

@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Plus, Search, Heart, MessageCircle, Share2, Bookmark, ExternalLink,
-  Trash2, Pencil, CalendarDays, FileText, Eye, Repeat2, MousePointerClick, AlertTriangle
+  Trash2, Pencil, CalendarDays, FileText, Eye, Repeat2, MousePointerClick, AlertTriangle,
+  MoreVertical, SlidersHorizontal, X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -22,7 +23,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
-import { PeriodSelector } from "@/components/PeriodSelector";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { ScoreTooltip } from "@/components/ScoreTooltip";
 import { usePeriodFilter } from "@/hooks/use-period-filter";
 import { useAreaCreatorIds } from "@/hooks/use-area-filter";
 
@@ -36,12 +40,14 @@ export default function Posts() {
   const [formatFilter, setFormatFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(50);
+  const [showFilters, setShowFilters] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { inPeriod } = usePeriodFilter();
   const { matchesArea } = useAreaCreatorIds();
   const { isAdmin, user } = useAuth();
   const [disputePost, setDisputePost] = useState<{ id: string; title: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   async function load() {
     const { data } = await supabase
@@ -57,6 +63,7 @@ export default function Posts() {
   async function deletePost(id: string) {
     await supabase.from("posts").delete().eq("id", id);
     toast({ title: "Post removido!" });
+    setDeleteTarget(null);
     load();
   }
 
@@ -74,10 +81,11 @@ export default function Posts() {
   }).sort((a, b) => sortBy === "score" ? b.score - a.score : new Date(b.posted_at || b.created_at).getTime() - new Date(a.posted_at || a.created_at).getTime());
 
   const platforms = Array.from(new Set(posts.map(p => p.platform))).sort();
+  const hasActiveFilters = platformFilter !== "all" || formatFilter !== "all" || sortBy !== "date";
 
   return (
     <div className="p-4 md:p-8 animate-fade-in">
-      <div className="flex items-center justify-between mb-6 md:mb-8">
+      <div className="flex items-center justify-between mb-4 md:mb-6">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <FileText className="w-5 h-5 text-primary" />
@@ -92,38 +100,54 @@ export default function Posts() {
         )}
       </div>
 
-      {/* Search bar */}
-      <div className="relative mb-3">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input className="pl-9 bg-card border-border" placeholder="Buscar por título ou criador..." value={search} onChange={e => setSearch(e.target.value)} />
+      {/* Search + Filter toggle */}
+      <div className="flex gap-2 mb-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input className="pl-9 bg-card border-border" placeholder="Buscar por título ou criador..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          className={`h-10 w-10 flex-shrink-0 border-border ${hasActiveFilters ? "text-primary border-primary/30" : ""}`}
+          onClick={() => setShowFilters(!showFilters)}
+        >
+          <SlidersHorizontal className="w-4 h-4" />
+        </Button>
       </div>
 
-      {/* Filters — horizontal scroll on mobile */}
-      <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap scrollbar-none">
-        <Select value={platformFilter} onValueChange={setPlatformFilter}>
-          <SelectTrigger className="w-32 h-9 text-sm flex-shrink-0"><SelectValue placeholder="Plataforma" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            {platforms.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={formatFilter} onValueChange={setFormatFilter}>
-          <SelectTrigger className="w-32 h-9 text-sm flex-shrink-0"><SelectValue placeholder="Formato" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Feed + Stories</SelectItem>
-            <SelectItem value="feed">Feed</SelectItem>
-            <SelectItem value="stories">Stories</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={sortBy} onValueChange={v => setSortBy(v as "date" | "score")}>
-          <SelectTrigger className="w-36 h-9 text-sm flex-shrink-0"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="date">Mais recente</SelectItem>
-            <SelectItem value="score">Maior score</SelectItem>
-          </SelectContent>
-        </Select>
-        <div className="flex-shrink-0"><PeriodSelector /></div>
-      </div>
+      {/* Filters — collapsible, stacked on mobile */}
+      {showFilters && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4 animate-fade-in">
+          <Select value={platformFilter} onValueChange={setPlatformFilter}>
+            <SelectTrigger className="h-10 text-sm bg-card border-border"><SelectValue placeholder="Plataforma" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as plataformas</SelectItem>
+              {platforms.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={formatFilter} onValueChange={setFormatFilter}>
+            <SelectTrigger className="h-10 text-sm bg-card border-border"><SelectValue placeholder="Formato" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Feed + Stories</SelectItem>
+              <SelectItem value="feed">Feed</SelectItem>
+              <SelectItem value="stories">Stories</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortBy} onValueChange={v => setSortBy(v as "date" | "score")}>
+            <SelectTrigger className="h-10 text-sm bg-card border-border"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date">Mais recente</SelectItem>
+              <SelectItem value="score">Maior score</SelectItem>
+            </SelectContent>
+          </Select>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => { setPlatformFilter("all"); setFormatFilter("all"); setSortBy("date"); }}>
+              <X className="w-3 h-3 mr-1" /> Limpar filtros
+            </Button>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-24 rounded-xl bg-card animate-pulse" />)}</div>
@@ -138,88 +162,92 @@ export default function Posts() {
         <div className="space-y-3">
           {filtered.slice(0, visibleCount).map(post => {
             const isStories = (post.format || "feed") === "stories";
+            const creatorNames = post.post_creators?.map(pc => pc.creator?.name).filter(Boolean) || [];
+
             return (
-              <div key={post.id} className="bg-card border border-border rounded-xl p-5 card-glow">
-                <div className="flex items-start gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                      <PlatformBadge platform={post.platform} />
-                      <FormatBadge format={post.format || "feed"} />
-                      {!isStories && <MediaTypeBadge mediaType={(post as any).media_type || "static"} />}
-                      {!isStories && <ContentTypeBadge contentType={(post as any).content_type ?? null} />}
-                      {post.post_creators?.map(pc => pc.creator && (
-                        <Link key={pc.creator.id} to={`/creators/${pc.creator.id}`} className="text-xs text-muted-foreground hover:text-primary transition-colors">
-                          {pc.creator.name}
-                        </Link>
-                      ))}
-                      {post.posted_at && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1 ml-auto">
-                          <CalendarDays className="w-3 h-3" />
-                          {format(new Date(post.posted_at), "dd/MM/yyyy", { locale: ptBR })}
-                        </span>
-                      )}
-                    </div>
-                    <p className="font-medium truncate text-sm">{post.title || post.url}</p>
-                    <a href={post.url} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-0.5 truncate">
-                      <ExternalLink className="w-3 h-3 flex-shrink-0" /> {post.url}
-                    </a>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                      {isStories ? (
-                        <>
-                          <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{(post.views_pico ?? 0).toLocaleString()} pico</span>
-                          <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" />{(post.interactions ?? 0).toLocaleString()}</span>
-                          <span className="flex items-center gap-1"><Repeat2 className="w-3 h-3" />{(post.forwards ?? 0).toLocaleString()}</span>
-                          <span className="flex items-center gap-1"><MousePointerClick className="w-3 h-3" />{(post.cta_clicks ?? 0).toLocaleString()}</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{(post.views ?? 0).toLocaleString()}</span>
-                          <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{post.likes.toLocaleString()}</span>
-                          <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" />{post.comments.toLocaleString()}</span>
-                          <span className="flex items-center gap-1"><Share2 className="w-3 h-3" />{post.shares.toLocaleString()}</span>
-                          <span className="flex items-center gap-1"><Bookmark className="w-3 h-3" />{post.saves.toLocaleString()}</span>
-                        </>
-                      )}
-                    </div>
+              <div key={post.id} className="bg-card border border-border rounded-xl overflow-hidden card-glow">
+                {/* Top row: score + badges + actions */}
+                <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <PlatformBadge platform={post.platform} />
+                    {!isStories && <MediaTypeBadge mediaType={(post as any).media_type || "static"} />}
+                    {!isStories && <ContentTypeBadge contentType={(post as any).content_type ?? null} />}
                   </div>
-                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    <div className="text-right">
-                      <p className="text-2xl font-bold gradient-text">{post.score.toFixed(0)}</p>
-                      <p className="text-xs text-muted-foreground">pontos</p>
-                    </div>
-                    {isAdmin && (
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="w-8 h-8 hover:text-primary" onClick={() => navigate(`/posts/${post.id}/edit`)}>
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="w-8 h-8 text-destructive hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="bg-card border-border">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Remover post?</AlertDialogTitle>
-                              <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deletePost(post.id)} className="bg-destructive text-destructive-foreground">Remover</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
+                  <div className="flex items-center gap-2">
+                    <ScoreTooltip
+                      score={post.score}
+                      likes={post.likes}
+                      comments={post.comments}
+                      shares={post.shares}
+                      saves={post.saves}
+                      views={post.views}
+                    />
+                    {/* Actions menu */}
+                    {(isAdmin || user) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {isAdmin && (
+                            <DropdownMenuItem onClick={() => navigate(`/posts/${post.id}/edit`)}>
+                              <Pencil className="w-3.5 h-3.5 mr-2" /> Editar
+                            </DropdownMenuItem>
+                          )}
+                          {user && (
+                            <DropdownMenuItem onClick={() => setDisputePost({ id: post.id, title: post.title || post.url })}>
+                              <AlertTriangle className="w-3.5 h-3.5 mr-2" /> Contestar
+                            </DropdownMenuItem>
+                          )}
+                          {isAdmin && (
+                            <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget(post.id)}>
+                              <Trash2 className="w-3.5 h-3.5 mr-2" /> Remover
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
-                    {user && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs gap-1 text-amber-400 hover:text-amber-300 hover:bg-amber-400/10"
-                        onClick={() => setDisputePost({ id: post.id, title: post.title || post.url })}
-                      >
-                        <AlertTriangle className="w-3 h-3" />
-                        Contestar
-                      </Button>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="px-4 pb-3">
+                  <p className="font-medium text-sm truncate">{post.title || post.url}</p>
+                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                    {creatorNames.map((name, i) => (
+                      <Link key={i} to={`/creators/${post.post_creators[i]?.creator?.id}`} className="hover:text-primary transition-colors">{name}</Link>
+                    ))}
+                    {post.posted_at && (
+                      <span className="flex items-center gap-1 ml-auto">
+                        <CalendarDays className="w-3 h-3" />
+                        {format(new Date(post.posted_at), "dd/MM", { locale: ptBR })}
+                      </span>
                     )}
+                  </div>
+
+                  {/* Metrics row */}
+                  <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                    {isStories ? (
+                      <>
+                        <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{(post.views_pico ?? 0).toLocaleString()}</span>
+                        <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" />{(post.interactions ?? 0).toLocaleString()}</span>
+                        <span className="flex items-center gap-1"><Repeat2 className="w-3 h-3" />{(post.forwards ?? 0).toLocaleString()}</span>
+                        <span className="flex items-center gap-1"><MousePointerClick className="w-3 h-3" />{(post.cta_clicks ?? 0).toLocaleString()}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{(post.views ?? 0).toLocaleString()}</span>
+                        <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{post.likes.toLocaleString()}</span>
+                        <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" />{post.comments.toLocaleString()}</span>
+                        <span className="flex items-center gap-1"><Share2 className="w-3 h-3" />{post.shares.toLocaleString()}</span>
+                        <span className="flex items-center gap-1"><Bookmark className="w-3 h-3" />{post.saves.toLocaleString()}</span>
+                      </>
+                    )}
+                    <a href={post.url} target="_blank" rel="noreferrer" className="ml-auto hover:text-primary transition-colors">
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
                   </div>
                 </div>
               </div>
@@ -235,6 +263,20 @@ export default function Posts() {
         )}
         </>
       )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover post?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-border">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteTarget && deletePost(deleteTarget)} className="bg-destructive text-destructive-foreground">Remover</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {disputePost && (
         <DisputeDialog
