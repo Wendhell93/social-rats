@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Ticket, Plus, Trophy, CalendarDays, Users, Dices, PartyPopper, X } from "lucide-react";
 import { performDraw } from "@/lib/raffleVouchers";
+import { CelebrationOverlay } from "@/components/CelebrationOverlay";
 
 type Area = { id: string; name: string };
 type Raffle = {
@@ -66,6 +67,7 @@ export function RafflesSection() {
   // Draw state
   const [drawing, setDrawing] = useState(false);
   const [lastWinner, setLastWinner] = useState<{ name: string; position: number } | null>(null);
+  const [celebrationData, setCelebrationData] = useState<{ type: "raffle-win"; message: string; subMessage: string } | null>(null);
 
   useEffect(() => { load(); }, []);
 
@@ -171,7 +173,7 @@ export function RafflesSection() {
     const result = await performDraw(raffle.id, nextPrize?.id);
     if (result) {
       setLastWinner({ name: result.winnerName, position: result.position });
-      toast({ title: `Ganhador sorteado!`, description: `${result.winnerName} — ${result.position}o lugar` });
+      setCelebrationData({ type: "raffle-win", message: result.winnerName, subMessage: `${result.position}o lugar no sorteio "${raffle.name}"` });
       load();
     } else {
       toast({ title: "Sem participantes elegíveis", description: "Todos já foram sorteados ou não há vouchers.", variant: "destructive" });
@@ -437,17 +439,14 @@ export function RafflesSection() {
         </div>
       )}
 
-      {/* ── Last winner celebration ── */}
-      {lastWinner && (
-        <Dialog open={!!lastWinner} onOpenChange={() => setLastWinner(null)}>
-          <DialogContent className="text-center max-w-sm">
-            <PartyPopper className="w-12 h-12 text-amber-400 mx-auto mb-2" />
-            <DialogTitle className="text-xl">Parabéns!</DialogTitle>
-            <p className="text-lg font-bold text-amber-400">{lastWinner.name}</p>
-            <p className="text-sm text-muted-foreground">{lastWinner.position}o lugar</p>
-            <Button className="mt-4" onClick={() => setLastWinner(null)}>Fechar</Button>
-          </DialogContent>
-        </Dialog>
+      {/* ── Winner celebration overlay ── */}
+      {celebrationData && (
+        <CelebrationOverlay
+          type={celebrationData.type}
+          message={celebrationData.message}
+          subMessage={celebrationData.subMessage}
+          onComplete={() => { setCelebrationData(null); setLastWinner(null); }}
+        />
       )}
 
       {/* ── Create Raffle Dialog ── */}

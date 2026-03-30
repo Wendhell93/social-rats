@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, Trophy, Gift, Star, BookOpen,
-  Settings, LogIn, LogOut, Menu, MoreHorizontal, User, ShieldAlert, ScrollText
+  Settings, LogIn, LogOut, Menu, MoreHorizontal, User, ShieldAlert, ScrollText, Plus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,12 +29,13 @@ const baseNavItems = [
   { to: "/creators", icon: Users, label: "Criadores" },
 ];
 
-// Bottom nav: 4 primary items + "Mais" drawer
+// Bottom nav: 4 items + center FAB + "Mais" drawer
+// "Quero Pontuar" moved to "Mais" sheet; FAB for creating posts takes center
 const bottomPrimary = [
-  { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/quero-pontuar", icon: Star, label: "Quero Pontuar" },
+  { to: "/", icon: LayoutDashboard, label: "Home" },
   { to: "/ranking", icon: Trophy, label: "Ranking" },
-  { to: "/awards", icon: Gift, label: "Prêmios e Regras" },
+  // FAB goes in render between these two
+  { to: "/awards", icon: Gift, label: "Prêmios" },
 ];
 
 function SidebarContent({ navItems, user, isAdmin, onSignOut }: {
@@ -200,19 +201,38 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ── Mobile bottom nav ──────────────────────────────── */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-16 flex items-center border-t border-sidebar-border" style={{ background: "hsl(225 28% 6%)" }}>
-        {bottomPrimary.map(({ to, icon: Icon, label }) => {
+        {/* Left items */}
+        {bottomPrimary.slice(0, 2).map(({ to, icon: Icon, label }) => {
           const active = to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
           return (
-            <Link
-              key={to}
-              to={to}
-              className={cn(
-                "flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors",
-                active ? "text-primary" : "text-muted-foreground"
-              )}
-            >
+            <Link key={to} to={to} className={cn("flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors", active ? "text-primary" : "text-muted-foreground")}>
               <Icon className={cn("w-5 h-5", active && "drop-shadow-[0_0_6px_hsl(var(--primary))]")} />
-              <span className="text-[10px] font-medium">{label}</span>
+              <span className="text-xs font-medium">{label}</span>
+            </Link>
+          );
+        })}
+
+        {/* Center FAB — Create Post */}
+        <div className="flex-1 flex justify-center relative">
+          <Link
+            to="/posts/new"
+            className={cn(
+              "absolute -top-5 w-[52px] h-[52px] rounded-full gradient-primary flex items-center justify-center shadow-lg active:scale-95 transition-transform glow-blue",
+              location.pathname === "/posts/new" && "ring-2 ring-primary/50"
+            )}
+          >
+            <Plus className="w-6 h-6 text-white" />
+          </Link>
+          <span className="text-xs font-medium text-muted-foreground mt-3">Novo</span>
+        </div>
+
+        {/* Right items */}
+        {bottomPrimary.slice(2).map(({ to, icon: Icon, label }) => {
+          const active = location.pathname.startsWith(to);
+          return (
+            <Link key={to} to={to} className={cn("flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors", active ? "text-primary" : "text-muted-foreground")}>
+              <Icon className={cn("w-5 h-5", active && "drop-shadow-[0_0_6px_hsl(var(--primary))]")} />
+              <span className="text-xs font-medium">{label}</span>
             </Link>
           );
         })}
@@ -229,7 +249,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               )}
             >
               <MoreHorizontal className="w-5 h-5" />
-              <span className="text-[10px] font-medium">Mais</span>
+              <span className="text-xs font-medium">Mais</span>
             </button>
           </SheetTrigger>
           <SheetContent side="bottom" className="rounded-t-2xl border-t border-sidebar-border pb-safe" style={{ background: "hsl(225 28% 6%)" }}>
