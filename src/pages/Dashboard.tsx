@@ -114,7 +114,7 @@ export default function Dashboard() {
           alt="SocialRats"
           className="w-full h-full object-cover object-center"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-transparent to-background/90" />
         <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 flex items-end justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">

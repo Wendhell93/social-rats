@@ -16,7 +16,7 @@ export function PeriodSelector() {
   return (
     <div className="flex items-center gap-2">
       <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-        <SelectTrigger className="w-44 h-8 text-xs">
+        <SelectTrigger className="w-44 h-9 text-xs bg-primary/20 border-primary/30 text-white hover:bg-primary/30 backdrop-blur-sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
