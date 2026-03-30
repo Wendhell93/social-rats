@@ -74,19 +74,19 @@ function SidebarContent({ navItems, user, isAdmin, onSignOut }: {
       </nav>
 
       <div className="px-4 py-4 border-t border-sidebar-border">
-        {isAdmin && user ? (
+        {user ? (
           <div className="flex items-center gap-2">
             <Avatar className="w-7 h-7 flex-shrink-0">
               <AvatarImage src={user.user_metadata?.avatar_url} />
               <AvatarFallback className="text-xs bg-primary/20 text-primary">
-                {(user.user_metadata?.full_name || user.email || "A").slice(0, 1).toUpperCase()}
+                {(user.user_metadata?.full_name || user.email || "?").slice(0, 1).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-foreground truncate">
-                {user.user_metadata?.full_name || "Admin"}
+                {user.user_metadata?.full_name || user.email || "Usuário"}
               </p>
-              <p className="text-[10px] text-muted-foreground">Administrador</p>
+              <p className="text-[10px] text-muted-foreground">{isAdmin ? "Administrador" : "Criador"}</p>
             </div>
             <Button
               variant="ghost"
@@ -104,7 +104,7 @@ function SidebarContent({ navItems, user, isAdmin, onSignOut }: {
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all"
           >
             <LogIn className="w-3.5 h-3.5" />
-            Entrar como admin
+            Entrar
           </Link>
         )}
       </div>
@@ -256,17 +256,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   );
                 })}
                 <div className="pt-2 border-t border-sidebar-border mt-2">
-                  {isAdmin && user ? (
+                  {user ? (
                     <div className="flex items-center gap-3 px-4 py-3 rounded-xl">
                       <Avatar className="w-7 h-7 flex-shrink-0">
                         <AvatarImage src={user.user_metadata?.avatar_url} />
                         <AvatarFallback className="text-xs bg-primary/20 text-primary">
-                          {(user.user_metadata?.full_name || user.email || "A").slice(0, 1).toUpperCase()}
+                          {(user.user_metadata?.full_name || user.email || "?").slice(0, 1).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate">{user.user_metadata?.full_name || "Admin"}</p>
-                        <p className="text-[10px] text-muted-foreground">Administrador</p>
+                        <p className="text-xs font-medium text-foreground truncate">{user.user_metadata?.full_name || user.email || "Usuário"}</p>
+                        <p className="text-[10px] text-muted-foreground">{isAdmin ? "Administrador" : "Criador"}</p>
                       </div>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={handleSignOut}>
                         <LogOut className="w-4 h-4" />
@@ -278,7 +278,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all"
                     >
                       <LogIn className="w-4 h-4" />
-                      Entrar como admin
+                      Entrar
                     </Link>
                   )}
                 </div>
