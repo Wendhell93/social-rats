@@ -22,6 +22,7 @@ import MyProfile from "./pages/MyProfile";
 import Disputes from "./pages/Disputes";
 import Policies from "./pages/Policies";
 import Login from "./pages/Login";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/cadastro" element={<Onboarding />} />
             <Route
               path="/*"
               element={
